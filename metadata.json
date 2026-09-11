@@ -1,0 +1,8 @@
+{
+  "name": "Novella",
+  "description": "An immersive African and contemporary storytelling platform with personalized libraries, secure customer and admin authentication, and seamless reading experiences.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
