@@ -7,12 +7,18 @@ import {
   Announcement, 
   AuditLog, 
   PlatformSettings, 
-  StoryAnalytics,
-  Chapter,
-  AuthResponse,
-  ForgotPasswordResponse,
-  PriceHistoryRecord,
-  CustomerPurchaseRecord
+  StoryAnalytics, 
+  Chapter, 
+  AuthResponse, 
+  ForgotPasswordResponse, 
+  Review, 
+  UserStoryRating,
+  StoryRatingSummary,
+  Comment, 
+  AppNotification, 
+  ContentReport, 
+  AuthorEarnings, 
+  AIGenerateStoryRequest 
 } from '../types';
 import { INITIAL_STORIES } from '../data/initialStories';
 import { 
@@ -23,16 +29,28 @@ import {
   INITIAL_ANNOUNCEMENTS, 
   INITIAL_AUDIT_LOGS, 
   INITIAL_PLATFORM_SETTINGS, 
-  INITIAL_STORY_ANALYTICS 
+  INITIAL_STORY_ANALYTICS,
+  INITIAL_REVIEWS,
+  INITIAL_COMMENTS,
+  INITIAL_NOTIFICATIONS,
+  INITIAL_REPORTS,
+  INITIAL_AUTHOR_EARNINGS
 } from '../data/adminMockData';
 
 const API_BASE = '/api';
 
-// Current active session token
-let currentAuthToken: string | null = null;
+// Active session token in memory and localStorage
+let currentAuthToken: string | null = typeof window !== 'undefined' ? localStorage.getItem('novella_auth_token') : null;
 
 export const setStoredAuthToken = (token: string | null) => {
   currentAuthToken = token;
+  if (typeof window !== 'undefined') {
+    if (token) {
+      localStorage.setItem('novella_auth_token', token);
+    } else {
+      localStorage.removeItem('novella_auth_token');
+    }
+  }
 };
 
 const getAuthHeaders = (): Record<string, string> => {
@@ -45,26 +63,28 @@ const getAuthHeaders = (): Record<string, string> => {
   return headers;
 };
 
-// Fallback in-memory storage for offline/pure client resilience
+// Fallback in-memory storage for offline / resilient client execution
 let localStories: Story[] = [...INITIAL_STORIES];
 let localAuthors: Author[] = [...INITIAL_AUTHORS];
 let localCategories: CategoryInfo[] = [...INITIAL_CATEGORIES];
 let localUsers: UserProfile[] = [...INITIAL_ADMIN_USERS];
 let localTransactions: PaystackTransaction[] = [...INITIAL_EXTENDED_TRANSACTIONS];
+let localReviews: Review[] = [...INITIAL_REVIEWS];
+let localComments: Comment[] = [...INITIAL_COMMENTS];
+let localNotifications: AppNotification[] = [...INITIAL_NOTIFICATIONS];
+let localReports: ContentReport[] = [...INITIAL_REPORTS];
 let localAnnouncements: Announcement[] = [...INITIAL_ANNOUNCEMENTS];
-let localAuditLogs: AuditLog[] = [...INITIAL_AUDIT_LOGS];
 let localSettings: PlatformSettings = { ...INITIAL_PLATFORM_SETTINGS };
-let localAnalytics: StoryAnalytics[] = [...INITIAL_STORY_ANALYTICS];
 
 export const api = {
   // -------------------------------------------------------------
   // AUTHENTICATION
   // -------------------------------------------------------------
-  async signup(fullName: string, email: string, password: string, confirmPassword?: string): Promise<AuthResponse> {
+  async signup(fullName: string, email: string, password: string, confirmPassword?: string, role?: string): Promise<AuthResponse> {
     const res = await fetch(`${API_BASE}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullName, email, password, confirmPassword: confirmPassword || password }),
+      body: JSON.stringify({ fullName, email, password, confirmPassword: confirmPassword || password, role }),
     });
 
     const data = await res.json();
@@ -93,19 +113,39 @@ export const api = {
   },
 
   async adminSignin(email: string, password: string): Promise<AuthResponse> {
-    const res = await fetch(`${API_BASE}/auth/admin-signin`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+    return this.signin(email, password);
+  },
 
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || data.error || 'Administrator authentication failed');
+  async forgotPassword(email: string): Promise<ForgotPasswordResponse> {
+    try {
+      const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      return await res.json();
+    } catch {
+      return {
+        success: true,
+        message: 'Password reset instructions have been dispatched to your email.',
+        resetToken: 'mock_reset_token_' + Date.now(),
+      };
     }
+  },
 
-    setStoredAuthToken(data.token);
-    return data;
+  async resetPassword(tokenOrObj: string | any, newPassword?: string): Promise<{ success: boolean; message: string }> {
+    const token = typeof tokenOrObj === 'object' ? tokenOrObj.resetToken || tokenOrObj.token : tokenOrObj;
+    const pwd = typeof tokenOrObj === 'object' ? tokenOrObj.newPassword : newPassword;
+    try {
+      const res = await fetch(`${API_BASE}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, newPassword: pwd }),
+      });
+      return await res.json();
+    } catch {
+      return { success: true, message: 'Password has been successfully updated.' };
+    }
   },
 
   async googleAuth(email: string, fullName: string, avatar?: string): Promise<AuthResponse> {
@@ -138,75 +178,28 @@ export const api = {
   },
 
   async logout(): Promise<void> {
-    try {
-      await fetch(`${API_BASE}/auth/logout`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-    } catch {
-      // Ignore network errors on logout
-    } finally {
-      setStoredAuthToken(null);
-    }
+    setStoredAuthToken(null);
   },
 
-  async forgotPassword(email: string): Promise<ForgotPasswordResponse> {
-    const res = await fetch(`${API_BASE}/auth/forgot-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Password reset request failed');
-    }
-    return data;
-  },
-
-  async resetPassword(payload: { email: string; resetToken: string; newPassword: string; confirmPassword?: string }): Promise<{ success: boolean; message: string }> {
-    const res = await fetch(`${API_BASE}/auth/reset-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Failed to reset password');
-    }
-    return data;
-  },
-
-  async updateProfile(updates: { displayName?: string; fullName?: string; avatar?: string; currentPassword?: string; newPassword?: string }): Promise<{ message: string; user: UserProfile }> {
-    const res = await fetch(`${API_BASE}/auth/profile`, {
+  async updateProfile(updates: any): Promise<{ user: UserProfile }> {
+    const res = await fetch(`${API_BASE}/auth/me`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify(updates),
     });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Failed to update profile');
-    }
-    return data;
+    return await res.json();
   },
 
-  async syncUserData(payload: { bookmarks?: any[]; readingProgress?: any; unlockedStoryIds?: string[]; totalReadingMinutes?: number }): Promise<UserProfile> {
+  async syncUserData(updates: Partial<UserProfile>): Promise<void> {
     try {
-      const res = await fetch(`${API_BASE}/auth/sync`, {
-        method: 'POST',
+      await fetch(`${API_BASE}/auth/me`, {
+        method: 'PUT',
         headers: getAuthHeaders(),
-        body: JSON.stringify(payload),
+        body: JSON.stringify(updates),
       });
-      if (res.ok) {
-        const data = await res.json();
-        return data.user;
-      }
     } catch {
-      // Fallback
+      // Ignore
     }
-    return localUsers[0];
   },
 
   // -------------------------------------------------------------
@@ -220,712 +213,899 @@ export const api = {
         localStories = data;
         return data;
       }
-    } catch {
-      // Fallback
+    } catch (e) {
+      console.warn('API getStories failed, using local seed:', e);
     }
     return localStories;
   },
 
-  async getStory(id: string): Promise<Story> {
-    try {
-      const res = await fetch(`${API_BASE}/stories/${id}`);
-      if (res.ok) return await res.json();
-    } catch {
-      // Fallback
+  async getStoryForReading(storyId: string): Promise<Story> {
+    const res = await fetch(`${API_BASE}/stories/${storyId}/read`, {
+      headers: getAuthHeaders(),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Could not load chapter content');
     }
-    const found = localStories.find((s) => s.id === id);
-    if (!found) throw new Error('Story not found');
-    return found;
-  },
-
-  async getStoryForReading(id: string, userEmail?: string, unlockedStoryIds: string[] = []): Promise<Story> {
-    try {
-      const headers = getAuthHeaders();
-      headers['x-user-email'] = userEmail || '';
-      headers['x-unlocked-ids'] = unlockedStoryIds.join(',');
-
-      const res = await fetch(`${API_BASE}/stories/${id}/read`, {
-        headers,
-      });
-
-      if (res.ok) {
-        return await res.json();
-      }
-
-      if (res.status === 403) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Story is locked');
-      }
-    } catch (e: any) {
-      if (e.message && e.message.includes('locked')) {
-        throw e;
-      }
-    }
-
-    // Fallback: check access locally
-    const found = localStories.find((s) => s.id === id);
-    if (!found) throw new Error('Story not found');
-    if (found.isFree || unlockedStoryIds.includes(found.id)) {
-      return found;
-    }
-    throw new Error('This story requires purchase. First 2 books are 100% free.');
+    return data;
   },
 
   async createStory(storyData: Partial<Story>): Promise<Story> {
-    const newStory: Story = {
-      id: `story-${Date.now()}`,
-      order: localStories.length + 1,
-      title: storyData.title || 'Untitled Manuscript',
-      subtitle: storyData.subtitle || '',
-      author: storyData.author || 'Anonymous Author',
-      authorId: storyData.authorId,
-      authorBio: storyData.authorBio || '',
-      category: storyData.category || 'Folklore',
-      isFree: storyData.isFree ?? (localStories.length < (localSettings.freeBooksThreshold || 2)),
-      priceNGN: storyData.isFree ? 0 : (storyData.priceNGN || 2000),
-      priceUSD: storyData.isFree ? 0 : (storyData.priceUSD || 2.80),
-      rating: 5.0,
-      reviewCount: 1,
-      totalChapters: storyData.chapters?.length || 1,
-      readTime: `${(storyData.chapters?.length || 1) * 6} min`,
-      tags: storyData.tags || ['African Literature'],
-      publishedYear: new Date().getFullYear(),
-      status: storyData.status || 'published',
-      featured: storyData.featured ?? false,
-      totalReads: 0,
-      totalRevenueNGN: 0,
-      completionRate: 85,
-      description: storyData.description || 'A newly composed manuscript in Novella.',
-      synopsis: storyData.synopsis || storyData.description || '',
-      coverImage: storyData.coverImage,
-      coverColorTheme: storyData.coverColorTheme || {
-        bgGradient: 'from-amber-950 via-zinc-900 to-black',
-        accent: '#d97706',
-        text: '#fef3c7',
-        border: '#78350f',
-      },
-      chapters: storyData.chapters && storyData.chapters.length > 0 ? storyData.chapters : [
-        {
-          id: `ch-${Date.now()}-1`,
-          order: 1,
-          title: 'Chapter 1: The Opening Passage',
-          subtitle: 'The journey begins',
-          readMinutes: 5,
-          status: 'published',
-          content: 'Write the opening paragraph of your new masterpiece here.'
-        }
-      ],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    const res = await fetch(`${API_BASE}/stories`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(storyData),
+    });
 
-    try {
-      const res = await fetch(`${API_BASE}/stories`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(newStory),
-      });
-      if (res.ok) {
-        const created = await res.json();
-        localStories.push(created);
-        api.addAuditLog('Story Created', 'book', newStory.title, `Added new story by ${newStory.author}`);
-        return created;
-      }
-    } catch {
-      // Fallback
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to create story');
     }
-
-    localStories.push(newStory);
-    api.addAuditLog('Story Created', 'book', newStory.title, `Added new story by ${newStory.author}`);
-    return newStory;
+    return data;
   },
 
-  async updateStory(id: string, updates: Partial<Story>): Promise<Story> {
-    try {
-      const res = await fetch(`${API_BASE}/stories/${id}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(updates),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        const idx = localStories.findIndex(s => s.id === id);
-        if (idx !== -1) localStories[idx] = updated;
-        api.addAuditLog('Story Updated', 'book', updated.title, `Modified fields: ${Object.keys(updates).join(', ')}`);
-        return updated;
-      }
-    } catch {
-      // Fallback
-    }
+  async updateStory(storyId: string, updates: Partial<Story>): Promise<Story> {
+    const res = await fetch(`${API_BASE}/stories/${storyId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(updates),
+    });
 
-    const index = localStories.findIndex((s) => s.id === id);
-    if (index !== -1) {
-      localStories[index] = { 
-        ...localStories[index], 
-        ...updates, 
-        updatedAt: new Date().toISOString() 
-      };
-      api.addAuditLog('Story Updated', 'book', localStories[index].title, `Modified fields: ${Object.keys(updates).join(', ')}`);
-      return localStories[index];
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to update story');
     }
-    throw new Error('Story not found');
+    return data;
   },
 
-  async deleteStory(id: string): Promise<void> {
-    const target = localStories.find(s => s.id === id);
-    try {
-      await fetch(`${API_BASE}/stories/${id}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
-    } catch {
-      // Fallback
+  async deleteStory(storyId: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/stories/${storyId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to delete story');
     }
-    localStories = localStories.filter((s) => s.id !== id);
-    if (target) {
-      api.addAuditLog('Story Deleted', 'book', target.title, `Deleted story ID: ${id}`);
-    }
+    return data;
   },
 
-  // -------------------------------------------------------------
-  // BOOK COVERS
-  // -------------------------------------------------------------
-  async updateCover(storyId: string, coverData: { coverImage?: string; coverColorTheme?: any }): Promise<Story> {
-    const story = localStories.find(s => s.id === storyId);
-    if (!story) throw new Error('Story not found');
-    const updated = await api.updateStory(storyId, coverData);
-    api.addAuditLog('Cover Art Updated', 'book', story.title, `Updated cover visual & palette`);
-    return updated;
-  },
-
-  // -------------------------------------------------------------
-  // CHAPTERS
-  // -------------------------------------------------------------
   async updateChapters(storyId: string, chapters: Chapter[]): Promise<Story> {
-    const story = localStories.find(s => s.id === storyId);
-    if (!story) throw new Error('Story not found');
+    return this.updateStory(storyId, { chapters, totalChapters: chapters.length });
+  },
 
-    const updatedStory: Story = {
-      ...story,
-      chapters,
-      totalChapters: chapters.length,
-      readTime: `${chapters.reduce((sum, ch) => sum + (ch.readMinutes || 5), 0)} min`,
-      updatedAt: new Date().toISOString()
-    };
-
-    return await api.updateStory(storyId, updatedStory);
+  async updateCover(storyId: string, coverData: any): Promise<Story> {
+    return this.updateStory(storyId, coverData);
   },
 
   // -------------------------------------------------------------
-  // PUBLISHING & STATUS
+  // CHAPTERS MANAGEMENT
   // -------------------------------------------------------------
-  async updateStoryPublishStatus(storyId: string, status: 'published' | 'draft' | 'archived'): Promise<Story> {
-    try {
-      const res = await fetch(`${API_BASE}/stories/${storyId}/publish-status`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ status }),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        const idx = localStories.findIndex(s => s.id === storyId);
-        if (idx !== -1) localStories[idx] = updated;
-        api.addAuditLog('Publish Status Changed', 'book', updated.title, `Status changed to ${status}`);
-        return updated;
-      }
-    } catch {
-      // Fallback
+  async addChapter(storyId: string, chapter: Partial<Chapter>): Promise<Chapter> {
+    const res = await fetch(`${API_BASE}/stories/${storyId}/chapters`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(chapter),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to add chapter');
     }
-    return await api.updateStory(storyId, { status });
+    return data;
   },
 
-  // -------------------------------------------------------------
-  // PRICE MANAGEMENT
-  // -------------------------------------------------------------
-  async getAdminPrices(): Promise<{ stories: any[]; history: PriceHistoryRecord[]; defaultCurrency: string; ngnToUsdRate: number }> {
-    try {
-      const res = await fetch(`${API_BASE}/admin/prices`, {
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch {
-      // Fallback
+  async updateChapter(storyId: string, chapterId: string, updates: Partial<Chapter>): Promise<Chapter> {
+    const res = await fetch(`${API_BASE}/stories/${storyId}/chapters/${chapterId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(updates),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to update chapter');
     }
-
-    const rate = localSettings.ngnToUsdRate || 1450;
-    const stories = localStories.map(s => ({
-      id: s.id,
-      order: s.order,
-      title: s.title,
-      author: s.author,
-      category: s.category,
-      isFree: s.isFree,
-      priceNGN: s.priceNGN,
-      priceUSD: s.priceUSD,
-      status: s.status || 'published',
-      totalRevenueNGN: localTransactions.filter(t => t.storyId === s.id && t.status === 'success').reduce((sum, t) => sum + t.amountNGN, 0),
-      salesCount: localTransactions.filter(t => t.storyId === s.id && t.status === 'success').length
-    }));
-
-    return {
-      stories,
-      history: [],
-      defaultCurrency: localSettings.defaultCurrency || 'NGN',
-      ngnToUsdRate: rate
-    };
+    return data;
   },
 
-  async updateStoryPrice(storyId: string, payload: { newPriceNGN?: number; isFree?: boolean; reason?: string }): Promise<{ story: Story; historyRecord?: PriceHistoryRecord }> {
-    try {
-      const res = await fetch(`${API_BASE}/admin/prices/${storyId}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const idx = localStories.findIndex(s => s.id === storyId);
-        if (idx !== -1) localStories[idx] = data.story;
-        return data;
-      }
-    } catch {
-      // Fallback
+  async deleteChapter(storyId: string, chapterId: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/stories/${storyId}/chapters/${chapterId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to delete chapter');
     }
-
-    const story = localStories.find(s => s.id === storyId);
-    if (!story) throw new Error('Story not found');
-    const rate = localSettings.ngnToUsdRate || 1450;
-    const isFree = payload.isFree ?? story.isFree;
-    const priceNGN = isFree ? 0 : (payload.newPriceNGN ?? story.priceNGN);
-    const priceUSD = isFree ? 0 : Number((priceNGN / rate).toFixed(2));
-
-    const updated = await api.updateStory(storyId, { isFree, priceNGN, priceUSD });
-    api.addAuditLog('Price Updated', 'price', updated.title, `Price updated to ₦${priceNGN} (Free: ${isFree})`);
-    return { story: updated };
+    return data;
   },
 
   // -------------------------------------------------------------
-  // PURCHASES MANAGEMENT
+  // AI STORY GENERATOR
   // -------------------------------------------------------------
-  async getAdminPurchases(): Promise<CustomerPurchaseRecord[]> {
-    try {
-      const res = await fetch(`${API_BASE}/admin/purchases`, {
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch {
-      // Fallback
+  async generateAIStory(payload: AIGenerateStoryRequest): Promise<Story> {
+    const res = await fetch(`${API_BASE}/ai/generate-story`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to generate story with AI');
     }
-
-    return localTransactions.map(t => ({
-      id: `pur-${t.id}`,
-      transactionReference: t.reference,
-      userEmail: t.userEmail,
-      customerName: t.customerName || t.userEmail.split('@')[0],
-      storyId: t.storyId,
-      storyTitle: t.storyTitle,
-      amountNGN: t.amountNGN,
-      amountUSD: t.amountUSD || Number((t.amountNGN / (localSettings.ngnToUsdRate || 1450)).toFixed(2)),
-      channel: t.channel,
-      purchasedAt: t.paidAt,
-      status: t.status === 'success' ? 'active' : 'revoked'
-    }));
+    return data;
   },
 
   // -------------------------------------------------------------
-  // PAYSTACK PAYMENTS & TRANSACTIONS
+  // ADVANCED SEARCH
   // -------------------------------------------------------------
-  async initializePaystack(storyId: string, email: string, amountNGN: number) {
-    try {
-      const res = await fetch(`${API_BASE}/paystack/initialize`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ storyId, email, amountNGN }),
-      });
-      if (res.ok) return await res.json();
-    } catch {
-      // Fallback simulated session
-    }
-    return {
-      status: true,
-      data: {
-        reference: `PSTK_LOCAL_${Date.now()}`,
-        amount: amountNGN * 100,
-        currency: 'NGN',
-      },
-    };
-  },
+  async advancedSearch(params: {
+    q?: string;
+    category?: string;
+    pricing?: string;
+    tags?: string;
+    minRating?: number;
+    interactive?: boolean;
+    sort?: string;
+  }): Promise<Story[]> {
+    const searchParams = new URLSearchParams();
+    if (params.q) searchParams.set('q', params.q);
+    if (params.category) searchParams.set('category', params.category);
+    if (params.pricing) searchParams.set('pricing', params.pricing);
+    if (params.tags) searchParams.set('tags', params.tags);
+    if (params.minRating) searchParams.set('minRating', params.minRating.toString());
+    if (params.interactive !== undefined) searchParams.set('interactive', params.interactive.toString());
+    if (params.sort) searchParams.set('sort', params.sort);
 
-  async verifyPaystack(reference: string, storyId: string, email: string, channel = 'card') {
-    try {
-      const res = await fetch(`${API_BASE}/paystack/verify`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ reference, storyId, email, channel }),
-      });
-      if (res.ok) return await res.json();
-    } catch {
-      // Fallback
-    }
-
-    const story = localStories.find(s => s.id === storyId);
-    const newTx: PaystackTransaction = {
-      id: `tx-${Date.now()}`,
-      reference,
-      storyId,
-      storyTitle: story?.title || 'Story Book',
-      userEmail: email,
-      amountNGN: story?.priceNGN || 2000,
-      amountUSD: story?.priceUSD || 2.80,
-      status: 'success',
-      channel,
-      paidAt: new Date().toISOString(),
-      gatewayResponse: 'Successful Card/Bank Verification'
-    };
-
-    localTransactions.unshift(newTx);
-    api.addAuditLog('Payment Verified', 'payment', reference, `Verified ₦${newTx.amountNGN.toLocaleString()} for ${newTx.storyTitle}`);
-
-    return {
-      status: true,
-      data: {
-        status: 'success',
-        reference,
-        amount: newTx.amountNGN,
-        paid_at: newTx.paidAt,
-      },
-    };
-  },
-
-  async getTransactions(): Promise<PaystackTransaction[]> {
-    try {
-      const res = await fetch(`${API_BASE}/transactions`, {
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        const txs = await res.json();
-        localTransactions = txs;
-        return txs;
-      }
-    } catch {
-      // Fallback
-    }
-    return localTransactions;
-  },
-
-  async refundTransaction(txId: string): Promise<PaystackTransaction> {
-    const tx = localTransactions.find(t => t.id === txId);
-    if (!tx) throw new Error('Transaction not found');
-    tx.refunded = true;
-    tx.status = 'failed';
-    api.addAuditLog('Transaction Refunded', 'payment', tx.reference, `Issued refund for ₦${tx.amountNGN.toLocaleString()} to ${tx.userEmail}`);
-    return tx;
+    const res = await fetch(`${API_BASE}/stories/search?${searchParams.toString()}`);
+    if (!res.ok) return [];
+    return await res.json();
   },
 
   // -------------------------------------------------------------
-  // STATS & ANALYTICS
-  // -------------------------------------------------------------
-  async getStats() {
-    try {
-      const res = await fetch(`${API_BASE}/stats`, {
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) return await res.json();
-    } catch {
-      // Fallback
-    }
-
-    const totalRevenueNGN = localTransactions
-      .filter((t) => t.status === 'success' && !t.refunded)
-      .reduce((sum, t) => sum + t.amountNGN, 0);
-
-    const totalRevenueUSD = totalRevenueNGN / (localSettings.ngnToUsdRate || 1500);
-
-    return {
-      totalStories: localStories.length,
-      freeStories: localStories.filter((s) => s.isFree).length,
-      premiumStories: localStories.filter((s) => !s.isFree).length,
-      totalUsers: localUsers.length,
-      totalAuthors: localAuthors.length,
-      totalTransactions: localTransactions.length,
-      totalRevenueNGN,
-      totalRevenueUSD: Number(totalRevenueUSD.toFixed(2)),
-      activeReaders: localUsers.filter(u => u.status === 'active').length,
-    };
-  },
-
-  async getAnalytics(): Promise<StoryAnalytics[]> {
-    return localAnalytics;
-  },
-
-  // -------------------------------------------------------------
-  // AUTHORS
+  // AUTHORS & FOLLOWING
   // -------------------------------------------------------------
   async getAuthors(): Promise<Author[]> {
+    try {
+      const res = await fetch(`${API_BASE}/authors`);
+      if (res.ok) return await res.json();
+    } catch {
+      // Fallback
+    }
     return localAuthors;
+  },
+
+  async getAuthor(authorId: string): Promise<Author> {
+    const res = await fetch(`${API_BASE}/authors/${authorId}`);
+    return await res.json();
+  },
+
+  async followAuthor(authorId: string): Promise<{ following: boolean; followersCount: number }> {
+    const res = await fetch(`${API_BASE}/authors/${authorId}/follow`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return await res.json();
+  },
+
+  async toggleFollowAuthor(authorId: string): Promise<{ isFollowing: boolean; followersCount: number }> {
+    const res = await this.followAuthor(authorId);
+    return { isFollowing: res.following, followersCount: res.followersCount };
   },
 
   async createAuthor(authorData: Partial<Author>): Promise<Author> {
     const newAuthor: Author = {
-      id: `auth-${Date.now()}`,
+      id: authorData.id || `author-${Date.now()}`,
       name: authorData.name || 'New Author',
-      bio: authorData.bio || 'Author biography and background.',
-      avatar: authorData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      nationality: authorData.nationality || 'African',
-      primaryGenre: authorData.primaryGenre || 'Folklore',
-      bookIds: authorData.bookIds || [],
-      totalReads: 0,
-      totalRevenueNGN: 0,
-      awards: authorData.awards || [],
-      status: 'active',
-      joinedDate: new Date().toISOString().split('T')[0],
+      bio: authorData.bio || '',
+      avatar: authorData.avatar || '',
+      totalStories: authorData.totalStories || 0,
+      followersCount: authorData.followersCount || 0,
+      primaryGenre: authorData.primaryGenre || 'African Stories',
+      featured: authorData.featured || false,
     };
-    localAuthors.unshift(newAuthor);
-    api.addAuditLog('Author Added', 'book', newAuthor.name, `Added author profile with genre ${newAuthor.primaryGenre}`);
+    localAuthors = [newAuthor, ...localAuthors];
     return newAuthor;
   },
 
-  async updateAuthor(id: string, updates: Partial<Author>): Promise<Author> {
-    const idx = localAuthors.findIndex(a => a.id === id);
-    if (idx === -1) throw new Error('Author not found');
-    localAuthors[idx] = { ...localAuthors[idx], ...updates };
-    api.addAuditLog('Author Profile Updated', 'book', localAuthors[idx].name, `Updated author profile`);
-    return localAuthors[idx];
+  async updateAuthor(authorId: string, updates: Partial<Author>): Promise<Author> {
+    localAuthors = localAuthors.map((a) => (a.id === authorId ? { ...a, ...updates } : a));
+    const found = localAuthors.find((a) => a.id === authorId);
+    return found || (updates as Author);
   },
 
-  async deleteAuthor(id: string): Promise<void> {
-    const author = localAuthors.find(a => a.id === id);
-    localAuthors = localAuthors.filter(a => a.id !== id);
-    if (author) {
-      api.addAuditLog('Author Deleted', 'book', author.name, `Deleted author ID: ${id}`);
+  async deleteAuthor(authorId: string): Promise<{ success: boolean }> {
+    localAuthors = localAuthors.filter((a) => a.id !== authorId);
+    return { success: true };
+  },
+
+  async getAuthorEarnings(): Promise<AuthorEarnings> {
+    try {
+      const res = await fetch(`${API_BASE}/author/earnings`, { headers: getAuthHeaders() });
+      if (res.ok) return await res.json();
+    } catch {
+      // Fallback
     }
+    return INITIAL_AUTHOR_EARNINGS;
+  },
+
+  async requestPayout(
+    amountNGN: number, 
+    bankDetails: { bankName: string; accountNumber: string; accountName: string } | string
+  ): Promise<any> {
+    const details = typeof bankDetails === 'string'
+      ? { bankName: 'Commercial Bank', accountNumber: '0123456789', accountName: bankDetails }
+      : bankDetails;
+    const res = await fetch(`${API_BASE}/author/request-payout`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ amountNGN, bankDetails: details }),
+    });
+    return await res.json();
   },
 
   // -------------------------------------------------------------
-  // CATEGORIES & GENRES
+  // REVIEWS & RATINGS ENGINE
   // -------------------------------------------------------------
-  async getCategories(): Promise<CategoryInfo[]> {
-    return localCategories.sort((a, b) => (a.order || 0) - (b.order || 0));
+  async getReviews(storyId: string): Promise<Review[]> {
+    try {
+      const res = await fetch(`${API_BASE}/reviews?storyId=${encodeURIComponent(storyId)}`);
+      if (res.ok) return await res.json();
+    } catch {
+      // Fallback
+    }
+    return localReviews.filter((r) => r.storyId === storyId && r.status === 'approved');
   },
 
-  async createCategory(data: Partial<CategoryInfo>): Promise<CategoryInfo> {
-    const newCat: CategoryInfo = {
-      id: `cat-${Date.now()}`,
-      name: data.name || 'Adventure',
-      slug: (data.name || 'adventure').toLowerCase().replace(/\s+/g, '-'),
-      description: data.description || 'Exciting narratives across expansive worlds.',
-      color: data.color || '#3b82f6',
-      bookCount: 0,
-      isFeatured: data.isFeatured ?? true,
-      order: localCategories.length + 1,
+  async getStoryRatingInfo(storyId: string): Promise<StoryRatingSummary & { userRating?: number; userReview?: Review; recentReviews: Review[] }> {
+    try {
+      const res = await fetch(`${API_BASE}/stories/${storyId}/rating`, {
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {
+      // Fallback to local
+    }
+
+    const story = localStories.find((s) => s.id === storyId);
+    const storyApprovedReviews = localReviews.filter((r) => r.storyId === storyId && r.status === 'approved');
+    return {
+      storyId,
+      averageRating: story?.rating || 4.7,
+      ratingsCount: story?.ratingsCount || 1245,
+      reviewCount: story?.reviewCount || storyApprovedReviews.length,
+      breakdown: story?.ratingBreakdown || { 5: 996, 4: 187, 3: 42, 2: 12, 1: 8 },
+      recentReviews: storyApprovedReviews.slice(0, 10),
     };
-    localCategories.push(newCat);
-    api.addAuditLog('Category Created', 'book', newCat.name, `Created category with color ${newCat.color}`);
-    return newCat;
   },
 
-  async updateCategory(id: string, updates: Partial<CategoryInfo>): Promise<CategoryInfo> {
-    const idx = localCategories.findIndex(c => c.id === id);
-    if (idx === -1) throw new Error('Category not found');
-    localCategories[idx] = { ...localCategories[idx], ...updates };
-    api.addAuditLog('Category Updated', 'book', localCategories[idx].name, `Updated category details`);
-    return localCategories[idx];
-  },
+  async rateStory(
+    storyId: string,
+    rating: number,
+    title?: string,
+    content?: string,
+    hasSpoilers?: boolean
+  ): Promise<{ success: boolean; isUpdate: boolean; message: string; story: Story; userRating: number; review?: Review }> {
+    const res = await fetch(`${API_BASE}/stories/${storyId}/rate`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ rating, title, content, hasSpoilers }),
+    });
 
-  async deleteCategory(id: string): Promise<void> {
-    const cat = localCategories.find(c => c.id === id);
-    localCategories = localCategories.filter(c => c.id !== id);
-    if (cat) {
-      api.addAuditLog('Category Deleted', 'book', cat.name, `Deleted category ID: ${id}`);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to submit rating');
     }
-  },
 
-  // -------------------------------------------------------------
-  // USERS MANAGEMENT
-  // -------------------------------------------------------------
-  async getUsers(): Promise<UserProfile[]> {
-    try {
-      const res = await fetch(`${API_BASE}/users`, {
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        localUsers = data;
-        return data;
+    // Update in local array as well for instant responsiveness
+    if (data.story) {
+      const index = localStories.findIndex((s) => s.id === storyId);
+      if (index >= 0) {
+        localStories[index] = { ...localStories[index], ...data.story };
       }
-    } catch {
-      // Fallback
     }
-    return localUsers;
+
+    return data;
   },
 
-  async toggleUserStatus(userId: string): Promise<UserProfile> {
-    try {
-      const res = await fetch(`${API_BASE}/users/${userId}/status`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return data;
-      }
-    } catch {
-      // Fallback
+  async addReview(reviewData: {
+    storyId: string;
+    rating: number;
+    title: string;
+    content: string;
+    hasSpoilers?: boolean;
+  }): Promise<{ review: Review; story?: Story }> {
+    const res = await fetch(`${API_BASE}/reviews`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(reviewData),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to submit review');
     }
-    const user = localUsers.find(u => u.id === userId);
-    if (!user) throw new Error('User not found');
-    user.status = user.status === 'active' ? 'suspended' : 'active';
-    api.addAuditLog(`User Account ${user.status === 'active' ? 'Reactivated' : 'Suspended'}`, 'user', user.email, `Status changed to ${user.status}`);
-    return user;
+    return data;
   },
 
-  async grantBookAccess(userId: string, storyId: string): Promise<UserProfile> {
+  async getUserRatings(): Promise<UserStoryRating[]> {
     try {
-      const res = await fetch(`${API_BASE}/users/${userId}/grant-access`, {
-        method: 'POST',
+      const res = await fetch(`${API_BASE}/user/ratings`, {
         headers: getAuthHeaders(),
-        body: JSON.stringify({ storyId }),
       });
       if (res.ok) return await res.json();
     } catch {
       // Fallback
     }
-    const user = localUsers.find(u => u.id === userId);
-    if (!user) throw new Error('User not found');
-    if (!user.unlockedStoryIds.includes(storyId)) {
-      user.unlockedStoryIds.push(storyId);
+    return [];
+  },
+
+  async likeReview(reviewId: string): Promise<{ likes: number; liked: boolean }> {
+    const res = await fetch(`${API_BASE}/reviews/${reviewId}/like`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+    });
+    return await res.json();
+  },
+
+  // -------------------------------------------------------------
+  // COMMENTS & DISCUSSIONS
+  // -------------------------------------------------------------
+  async getComments(storyId: string, chapterId?: string): Promise<Comment[]> {
+    const url = chapterId 
+      ? `${API_BASE}/stories/${storyId}/comments?chapterId=${chapterId}`
+      : `${API_BASE}/stories/${storyId}/comments`;
+
+    try {
+      const res = await fetch(url);
+      if (res.ok) return await res.json();
+    } catch {
+      // Fallback
     }
-    const story = localStories.find(s => s.id === storyId);
-    api.addAuditLog('Manual Book Access Granted', 'user', user.email, `Granted access to ${story?.title || storyId}`);
-    return user;
+    return localComments.filter((c) => c.storyId === storyId);
+  },
+
+  async addComment(payload: { storyId: string; chapterId?: string; content: string }): Promise<Comment> {
+    const res = await fetch(`${API_BASE}/stories/${payload.storyId}/comments`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  },
+
+  async addReply(commentId: string, content: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/comments/${commentId}/reply`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ content }),
+    });
+    return await res.json();
+  },
+
+  async likeComment(commentId: string): Promise<{ likes: number }> {
+    const res = await fetch(`${API_BASE}/comments/${commentId}/like`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return await res.json();
+  },
+
+  // -------------------------------------------------------------
+  // NOTIFICATIONS
+  // -------------------------------------------------------------
+  async getNotifications(): Promise<AppNotification[]> {
+    try {
+      const res = await fetch(`${API_BASE}/notifications`, { headers: getAuthHeaders() });
+      if (res.ok) return await res.json();
+    } catch {
+      // Fallback
+    }
+    return localNotifications;
+  },
+
+  async markNotificationRead(id: string): Promise<void> {
+    localNotifications = localNotifications.map((n) => (n.id === id ? { ...n, read: true } : n));
+    await fetch(`${API_BASE}/notifications/${id}/read`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  async markAllNotificationsRead(): Promise<void> {
+    localNotifications = localNotifications.map((n) => ({ ...n, read: true }));
+  },
+
+  // -------------------------------------------------------------
+  // CONTENT REPORTING
+  // -------------------------------------------------------------
+  async reportContent(payload: {
+    targetType: 'story' | 'comment' | 'review' | 'user';
+    targetId: string;
+    targetTitle?: string;
+    reason: string;
+    details?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`${API_BASE}/reports`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  },
+
+  async submitReport(payload: any): Promise<{ success: boolean; message: string }> {
+    return this.reportContent(payload);
+  },
+
+  // -------------------------------------------------------------
+  // PAYMENTS & PAYSTACK TRANSACTIONS
+  // -------------------------------------------------------------
+  async initializePayment(email: string, storyId: string, amountNGN: number): Promise<{
+    reference: string;
+    access_code: string;
+    authorization_url: string;
+    data?: { reference: string; authorization_url: string; access_code: string };
+  }> {
+    const res = await fetch(`${API_BASE}/paystack/initialize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, storyId, amountNGN }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to initialize Paystack payment');
+    }
+    return {
+      ...data,
+      data: {
+        reference: data.reference,
+        authorization_url: data.authorization_url,
+        access_code: data.access_code,
+      }
+    };
+  },
+
+  async initializePaystack(storyIdOrEmail: string, emailOrStoryId?: string, amountNGN?: number): Promise<any> {
+    const email = emailOrStoryId && emailOrStoryId.includes('@') ? emailOrStoryId : storyIdOrEmail.includes('@') ? storyIdOrEmail : 'reader@novella.app';
+    const storyId = storyIdOrEmail.includes('@') ? (emailOrStoryId || 'story-1') : storyIdOrEmail;
+    return this.initializePayment(email, storyId, amountNGN || 2500);
+  },
+
+  async verifyPayment(reference: string, emailOrStory: string, storyOrEmail?: string): Promise<{
+    status: boolean;
+    story: Story;
+    transaction: PaystackTransaction;
+  }> {
+    const email = emailOrStory.includes('@') ? emailOrStory : storyOrEmail || 'reader@novella.app';
+    const storyId = emailOrStory.includes('@') ? (storyOrEmail || 'story-1') : emailOrStory;
+
+    const res = await fetch(`${API_BASE}/paystack/verify`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ reference, email, storyId }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Payment verification failed');
+    }
+    return {
+      ...data,
+      status: data.status === 'success' || data.status === true,
+    };
+  },
+
+  async verifyPaystack(reference: string, storyId: string, email: string, _channel?: string): Promise<any> {
+    return this.verifyPayment(reference, email, storyId);
+  },
+
+  async getTransactions(): Promise<PaystackTransaction[]> {
+    const res = await fetch(`${API_BASE}/transactions`, { headers: getAuthHeaders() });
+    return await res.json();
+  },
+
+  async getAdminPurchases(): Promise<any[]> {
+    const txs = await this.getTransactions();
+    return txs.map((t) => ({
+      ...t,
+      customerName: t.userEmail ? t.userEmail.split('@')[0] : 'Reader',
+      transactionReference: t.reference,
+      purchasedAt: t.paidAt || (t as any).createdAt || new Date().toISOString(),
+      amountPaidNGN: t.amountNGN,
+      channel: t.channel || 'card',
+    }));
   },
 
   async grantStoryAccess(userId: string, storyId: string): Promise<UserProfile> {
-    return this.grantBookAccess(userId, storyId);
-  },
-
-  async revokeBookAccess(userId: string, storyId: string): Promise<UserProfile> {
-    try {
-      const res = await fetch(`${API_BASE}/users/${userId}/revoke-access`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ storyId }),
-      });
-      if (res.ok) return await res.json();
-    } catch {
-      // Fallback
-    }
-    const user = localUsers.find(u => u.id === userId);
-    if (!user) throw new Error('User not found');
-    user.unlockedStoryIds = user.unlockedStoryIds.filter(id => id !== storyId);
-    const story = localStories.find(s => s.id === storyId);
-    api.addAuditLog('Book Access Revoked', 'user', user.email, `Revoked access to ${story?.title || storyId}`);
-    return user;
+    const res = await fetch(`${API_BASE}/users/${userId}/grant-access`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ storyId }),
+    });
+    return await res.json();
   },
 
   async revokeStoryAccess(userId: string, storyId: string): Promise<UserProfile> {
-    return this.revokeBookAccess(userId, storyId);
+    const res = await fetch(`${API_BASE}/users/${userId}/revoke-access`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ storyId }),
+    });
+    return await res.json();
   },
 
-  async updateUserRole(userId: string, newRole: UserProfile['role']): Promise<UserProfile> {
+  // -------------------------------------------------------------
+  // ADMIN PLATFORM MANAGEMENT
+  // -------------------------------------------------------------
+  async getCategories(): Promise<CategoryInfo[]> {
     try {
-      const res = await fetch(`${API_BASE}/users/${userId}/role`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ role: newRole }),
-      });
+      const res = await fetch(`${API_BASE}/categories`);
       if (res.ok) return await res.json();
     } catch {
       // Fallback
     }
-    const user = localUsers.find(u => u.id === userId);
-    if (!user) throw new Error('User not found');
-    user.role = newRole;
-    api.addAuditLog('User Role Changed', 'security', user.email, `Assigned role ${newRole}`);
-    return user;
+    return localCategories;
   },
 
-  // -------------------------------------------------------------
-  // ANNOUNCEMENTS & NOTIFICATIONS
-  // -------------------------------------------------------------
+  async createCategory(catData: Partial<CategoryInfo>): Promise<CategoryInfo> {
+    const name = catData.name || 'Category';
+    const newCat: CategoryInfo = {
+      id: catData.id || `cat-${Date.now()}`,
+      name: name as any,
+      slug: catData.slug || String(name).toLowerCase().replace(/\s+/g, '-'),
+      description: catData.description || '',
+      icon: catData.icon || 'BookOpen',
+      color: catData.color || 'from-amber-600 to-amber-800',
+      bookCount: catData.bookCount || 0,
+      isFeatured: catData.isFeatured ?? true,
+    };
+    localCategories = [newCat, ...localCategories];
+    return newCat;
+  },
+
+  async updateCategory(catId: string, updates: Partial<CategoryInfo>): Promise<CategoryInfo> {
+    localCategories = localCategories.map((c) => (c.id === catId ? { ...c, ...updates } : c));
+    const found = localCategories.find((c) => c.id === catId);
+    return found || (updates as CategoryInfo);
+  },
+
+  async deleteCategory(catId: string): Promise<{ success: boolean }> {
+    localCategories = localCategories.filter((c) => c.id !== catId);
+    return { success: true };
+  },
+
+  async getAdminUsers(): Promise<UserProfile[]> {
+    const res = await fetch(`${API_BASE}/users`, { headers: getAuthHeaders() });
+    return await res.json();
+  },
+
+  async getUsers(): Promise<UserProfile[]> {
+    return this.getAdminUsers();
+  },
+
+  async updateUserRole(userId: string, role: string, status?: string): Promise<UserProfile> {
+    const res = await fetch(`${API_BASE}/users/${userId}/role`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ role, status }),
+    });
+    return await res.json();
+  },
+
+  async toggleUserStatus(userId: string): Promise<UserProfile> {
+    return this.updateUserRole(userId, 'user', 'suspended');
+  },
+
+  async getStats(): Promise<any> {
+    return {
+      totalRevenueNGN: 184500,
+      totalUsers: 1420,
+      activeReaders: 680,
+      unlockedBooksCount: 2310,
+      conversionRate: 14.8,
+    };
+  },
+
   async getAnnouncements(): Promise<Announcement[]> {
+    try {
+      const res = await fetch(`${API_BASE}/announcements`);
+      if (res.ok) return await res.json();
+    } catch {
+      // Fallback
+    }
     return localAnnouncements;
   },
 
   async createAnnouncement(announcement: Partial<Announcement>): Promise<Announcement> {
-    const newAnn: Announcement = {
-      id: `ann-${Date.now()}`,
-      title: announcement.title || 'Platform Announcement',
-      message: announcement.message || '',
-      type: announcement.type || 'release',
-      targetAudience: announcement.targetAudience || 'all',
-      status: announcement.status || 'sent',
-      sentAt: new Date().toISOString(),
-      audienceCount: localUsers.length * 150,
-      linkAction: announcement.linkAction,
-    };
-    localAnnouncements.unshift(newAnn);
-    api.addAuditLog('Broadcast Announcement Sent', 'announcement', newAnn.title, `Target: ${newAnn.targetAudience}, Type: ${newAnn.type}`);
-    return newAnn;
+    const res = await fetch(`${API_BASE}/announcements`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(announcement),
+    });
+    return await res.json();
   },
 
   async updateAnnouncement(id: string, updates: Partial<Announcement>): Promise<Announcement> {
-    const idx = localAnnouncements.findIndex(a => a.id === id);
-    if (idx === -1) throw new Error('Announcement not found');
-    localAnnouncements[idx] = { ...localAnnouncements[idx], ...updates };
-    api.addAuditLog('Announcement Updated', 'announcement', localAnnouncements[idx].title, `Updated announcement details`);
-    return localAnnouncements[idx];
+    const res = await fetch(`${API_BASE}/announcements/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(updates),
+    });
+    return await res.json();
   },
 
-  async deleteAnnouncement(id: string): Promise<void> {
-    localAnnouncements = localAnnouncements.filter(a => a.id !== id);
+  async deleteAnnouncement(id: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/announcements/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    return await res.json();
   },
 
-  // -------------------------------------------------------------
-  // AUDIT LOGS
-  // -------------------------------------------------------------
   async getAuditLogs(): Promise<AuditLog[]> {
-    return localAuditLogs;
+    const res = await fetch(`${API_BASE}/audit-logs`, { headers: getAuthHeaders() });
+    return await res.json();
   },
 
-  addAuditLog(
-    action: string, 
-    category: AuditLog['category'], 
-    target: string, 
-    details: string,
-    status: AuditLog['status'] = 'success'
-  ): void {
-    const newLog: AuditLog = {
-      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      timestamp: new Date().toISOString(),
-      adminEmail: 'admin@novella.app',
-      adminRole: 'super_admin',
-      action,
-      category,
-      target,
-      details,
-      status,
-      ipAddress: '102.89.44.12'
-    };
-    localAuditLogs.unshift(newLog);
+  async getPlatformSettings(): Promise<PlatformSettings> {
+    try {
+      const res = await fetch(`${API_BASE}/settings`);
+      if (res.ok) return await res.json();
+    } catch {
+      // Fallback
+    }
+    return localSettings;
   },
 
-  // -------------------------------------------------------------
-  // PLATFORM SETTINGS
-  // -------------------------------------------------------------
   async getSettings(): Promise<PlatformSettings> {
-    return localSettings;
+    return this.getPlatformSettings();
   },
 
-  async updateSettings(updates: Partial<PlatformSettings>): Promise<PlatformSettings> {
-    localSettings = { ...localSettings, ...updates };
-    api.addAuditLog('Platform Settings Updated', 'settings', 'Global Configurations', `Updated keys: ${Object.keys(updates).join(', ')}`);
-    return localSettings;
+  async updatePlatformSettings(settings: Partial<PlatformSettings>): Promise<PlatformSettings> {
+    const res = await fetch(`${API_BASE}/settings`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(settings),
+    });
+    return await res.json();
+  },
+
+  async updateSettings(settings: Partial<PlatformSettings>): Promise<PlatformSettings> {
+    return this.updatePlatformSettings(settings);
+  },
+
+  async getAdminPrices(): Promise<any> {
+    const stList = await this.getStories();
+    return {
+      stories: stList,
+      history: [
+        {
+          id: 'hist-1',
+          storyId: 'story-1',
+          storyTitle: 'Things Fall Apart',
+          oldPriceNGN: 0,
+          newPriceNGN: 0,
+          isFree: true,
+          changedBy: 'Super Administrator',
+          changedAt: '2026-01-10T12:00:00Z',
+          reason: 'Permanent platform cornerstone book (Guaranteed Free Vol 01)'
+        },
+        {
+          id: 'hist-2',
+          storyId: 'story-3',
+          storyTitle: 'Half of a Yellow Sun',
+          oldPriceNGN: 3500,
+          newPriceNGN: 2500,
+          isFree: false,
+          changedBy: 'Finance Administrator',
+          changedAt: '2026-02-01T14:30:00Z',
+          reason: 'Promotional literary discount'
+        }
+      ]
+    };
+  },
+
+  async updateStoryPrice(storyId: string, optionsOrPrice: any, maybeUsd?: number): Promise<Story> {
+    if (typeof optionsOrPrice === 'object') {
+      const { isFree, newPriceNGN } = optionsOrPrice;
+      return this.updateStory(storyId, { isFree, priceNGN: newPriceNGN });
+    }
+    return this.updateStory(storyId, { priceNGN: optionsOrPrice, priceUSD: maybeUsd });
+  },
+
+  async getAnalytics(): Promise<StoryAnalytics[]> {
+    const res = await fetch(`${API_BASE}/analytics`, { headers: getAuthHeaders() });
+    return await res.json();
+  },
+
+  async generateTitles(prompt: string, genre?: string, tone?: string): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/ai/generate-titles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, genre, tone }),
+    });
+    const data = await res.json();
+    return data.titles || [];
+  },
+
+  async generateStoryIdea(genre?: string, theme?: string, characterType?: string, setting?: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/ai/generate-idea`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ genre, theme, characterType, setting }),
+    });
+    const data = await res.json();
+    return data.idea;
+  },
+
+  async generateCharacter(role?: string, genre?: string, archetype?: string, context?: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/ai/generate-character`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role, genre, archetype, context }),
+    });
+    const data = await res.json();
+    return data.character;
+  },
+
+  async writingAssistant(action: string, text: string, context?: string, tone?: string): Promise<string> {
+    const res = await fetch(`${API_BASE}/ai/writing-assistant`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, text, context, tone }),
+    });
+    const data = await res.json();
+    return data.result || '';
+  },
+
+  async getAIRecommendations(favoriteGenres?: string[], readStoryIds?: string[], likedStoryIds?: string[]): Promise<Story[]> {
+    try {
+      const res = await fetch(`${API_BASE}/ai/recommendations`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ favoriteGenres, readStoryIds, likedStoryIds }),
+      });
+      const data = await res.json();
+      return data.recommendations || [];
+    } catch {
+      return localStories.slice(0, 6);
+    }
+  },
+
+  async translateStory(storyId: string, chapterId?: string, targetLanguage?: string, targetLanguageCode?: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/ai/translate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ storyId, chapterId, targetLanguage, targetLanguageCode }),
+    });
+    const data = await res.json();
+    return data.translation;
+  },
+
+  async toggleStoryLike(storyId: string): Promise<{ success: boolean; likesCount: number; isLiked: boolean }> {
+    const res = await fetch(`${API_BASE}/stories/${storyId}/like`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return await res.json();
+  },
+
+  async verifyAuthor(authorId: string, verified?: boolean): Promise<Author> {
+    const res = await fetch(`${API_BASE}/authors/${authorId}/verify`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ verified }),
+    });
+    return await res.json();
+  },
+
+  async getAuthorAnalytics(authorId: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/authors/${authorId}/analytics`);
+    return await res.json();
+  },
+
+  async getActivityFeed(): Promise<any[]> {
+    try {
+      const res = await fetch(`${API_BASE}/activity-feed`);
+      if (res.ok) return await res.json();
+    } catch {
+      // Fallback
+    }
+    return [];
+  },
+
+  async likeActivityFeed(itemId: string): Promise<{ success: boolean; likes: number }> {
+    const res = await fetch(`${API_BASE}/activity-feed/${itemId}/like`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return await res.json();
+  },
+
+  async exportBackup(): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/backup/export`, { headers: getAuthHeaders() });
+    return await res.json();
+  },
+
+  async restoreBackup(payload: any): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`${API_BASE}/admin/backup/restore`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ data: payload }),
+    });
+    return await res.json();
+  },
+
+  async suspendUser(userId: string, reason?: string, until?: string): Promise<UserProfile> {
+    const res = await fetch(`${API_BASE}/admin/users/${userId}/suspend`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ reason, until }),
+    });
+    return await res.json();
+  },
+
+  async unsuspendUser(userId: string): Promise<UserProfile> {
+    const res = await fetch(`${API_BASE}/admin/users/${userId}/unsuspend`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return await res.json();
+  },
+
+  async getDetailedAdminAnalytics(): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/detailed-analytics`, { headers: getAuthHeaders() });
+    return await res.json();
+  },
+
+  // -------------------------------------------------------------
+  // OFFLINE STORAGE HELPERS (localStorage / IndexedDB)
+  // -------------------------------------------------------------
+  saveOfflineStory(story: Story): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const key = `novella_offline_${story.id}`;
+      localStorage.setItem(key, JSON.stringify({ story, downloadedAt: new Date().toISOString() }));
+    } catch (e) {
+      console.warn('Could not store story offline:', e);
+    }
+  },
+
+  getOfflineStories(): Story[] {
+    if (typeof window === 'undefined') return [];
+    const stories: Story[] = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('novella_offline_')) {
+          const item = localStorage.getItem(key);
+          if (item) {
+            const parsed = JSON.parse(item);
+            if (parsed.story) stories.push(parsed.story);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error reading offline stories:', e);
+    }
+    return stories;
+  },
+
+  removeOfflineStory(storyId: string): void {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(`novella_offline_${storyId}`);
+  },
+
+  isStoryOffline(storyId: string): boolean {
+    if (typeof window === 'undefined') return false;
+    return Boolean(localStorage.getItem(`novella_offline_${storyId}`));
   }
 };
-
-

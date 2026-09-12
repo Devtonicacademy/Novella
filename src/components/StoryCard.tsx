@@ -1,6 +1,7 @@
 import React from 'react';
 import { Story } from '../types';
 import { BookCover } from './BookCover';
+import { StarRatingDisplay } from './StarRatingDisplay';
 import { useAuth } from '../context/AuthContext';
 import { Sparkles, Lock, Star, Clock, BookOpen, ArrowRight } from 'lucide-react';
 
@@ -35,17 +36,20 @@ export const StoryCard: React.FC<StoryCardProps> = ({
 
         <div className="flex-1 min-w-0 flex flex-col justify-between space-y-3">
           <div>
-            <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+            <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 mb-1 flex-wrap">
               <span className="font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider text-[10px]">
                 {story.category}
               </span>
               <span aria-hidden="true">·</span>
               <span>{story.readTime}</span>
               <span aria-hidden="true">·</span>
-              <span className="flex items-center gap-0.5 text-zinc-600 dark:text-zinc-300">
-                <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                {story.rating}
-              </span>
+              <StarRatingDisplay
+                rating={story.rating}
+                ratingsCount={story.ratingsCount}
+                variant="card"
+                size="xs"
+                onReviewsClick={() => onSelectStory(story)}
+              />
             </div>
 
             <h3
@@ -120,10 +124,13 @@ export const StoryCard: React.FC<StoryCardProps> = ({
           <span className="font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider text-[10px]">
             {story.category}
           </span>
-          <span className="flex items-center gap-1">
-            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-            {story.rating}
-          </span>
+          <StarRatingDisplay
+            rating={story.rating}
+            ratingsCount={story.ratingsCount}
+            variant="card"
+            size="xs"
+            onReviewsClick={() => onSelectStory(story)}
+          />
         </div>
 
         <h3

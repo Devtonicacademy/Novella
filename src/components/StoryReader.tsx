@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Story, Chapter, ReaderSettings, ReaderFontSize, ReaderFontFamily, ReaderTheme } from '../types';
+import { 
+  Story, 
+  Chapter, 
+  ReaderSettings, 
+  ReaderFontSize, 
+  ReaderFontFamily, 
+  ReaderTheme,
+  StoryChoice,
+  Comment,
+  Review
+} from '../types';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -14,17 +24,34 @@ import {
   Sparkles,
   Share2,
   X,
-  Type,
-  Maximize2,
+  Volume2,
+  VolumeX,
+  Play,
+  Pause,
+  RotateCcw,
+  MessageSquare,
+  Star,
+  Download,
   Check,
-  Volume2
+  Flag,
+  GitBranch,
+  Send,
+  Heart,
+  CornerDownRight,
+  WifiOff
 } from 'lucide-react';
+import { ReportContentModal } from './ReportContentModal';
+import { StarRatingDisplay } from './StarRatingDisplay';
+import { RateStoryModal } from './RateStoryModal';
+import { ShareStoryModal } from './ShareStoryModal';
+import { CollectionsModal } from './CollectionsModal';
 
 interface StoryReaderProps {
   storyId: string;
   initialChapterId?: string;
   onClose: () => void;
   onUnlockStory: (story: Story) => void;
+  onAuthorClick?: (authorName: string) => void;
 }
 
 export const StoryReader: React.FC<StoryReaderProps> = ({
@@ -32,8 +59,9 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   initialChapterId,
   onClose,
   onUnlockStory,
+  onAuthorClick,
 }) => {
-  const { user, isStoryUnlocked, saveReadingProgress, addBookmark, removeBookmark } = useAuth();
+  const { user, isStoryUnlocked, saveReadingProgress, trackReadingActivity, addBookmark, removeBookmark } = useAuth();
 
   const [story, setStory] = useState<Story | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,6 +72,35 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   const [showSettings, setShowSettings] = useState(false);
   const [showBookmarkModal, setShowBookmarkModal] = useState(false);
   const [bookmarkNote, setBookmarkNote] = useState('');
+  
+  // Feature Modals & Drawers
+  const [showCommentsDrawer, setShowCommentsDrawer] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showCollectionsModal, setShowCollectionsModal] = useState(false);
+  const [isSavedOffline, setIsSavedOffline] = useState(false);
+
+  // Discussion / Comments state
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+
+  // Reviews state
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [userRating, setUserRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState('');
+  const [reviewContent, setReviewContent] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  // Read Aloud / TTS State
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [speechRate, setSpeechRate] = useState(1);
+  const [showTTSBar, setShowTTSBar] = useState(false);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   // Reader Settings State
   const [readerSettings, setReaderSettings] = useState<ReaderSettings>(() => {
@@ -63,20 +120,18 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   const contentRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
 
-  // Fetch full story
+  // Fetch story data
   useEffect(() => {
     let isMounted = true;
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
-        const data = await api.getStoryForReading(
-          storyId,
-          user?.email,
-          user?.unlockedStoryIds || []
-        );
+        const data = await api.getStoryForReading(storyId);
         if (isMounted) {
           setStory(data);
+          setIsSavedOffline(api.isStoryOffline(storyId));
+
           if (initialChapterId && data.chapters) {
             const idx = data.chapters.findIndex((c) => c.id === initialChapterId);
             if (idx !== -1) setCurrentChapterIndex(idx);
@@ -98,13 +153,108 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
     load();
     return () => {
       isMounted = false;
+      stopSpeech();
     };
-  }, [storyId, user?.email, user?.unlockedStoryIds, initialChapterId]);
+  }, [storyId, initialChapterId]);
 
-  // Save settings
+  // Load comments & reviews
+  useEffect(() => {
+    if (story) {
+      loadComments();
+      loadReviews();
+    }
+  }, [story, currentChapterIndex]);
+
+  const loadComments = async () => {
+    if (!story) return;
+    try {
+      const currentChapter = story.chapters[currentChapterIndex];
+      const data = await api.getComments(story.id, currentChapter?.id);
+      setComments(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadReviews = async () => {
+    if (!story) return;
+    try {
+      const data = await api.getReviews(story.id);
+      setReviews(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Save display settings to local storage
   useEffect(() => {
     localStorage.setItem('novella_reader_settings', JSON.stringify(readerSettings));
   }, [readerSettings]);
+
+  // Read Aloud (TTS) Engine
+  const startSpeech = () => {
+    if (!window.speechSynthesis || !currentChapter) return;
+    window.speechSynthesis.cancel();
+
+    const textToSpeak = `${currentChapter.title}. ${currentChapter.subtitle || ''}. ${currentChapter.content}`;
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.rate = speechRate;
+    utterance.pitch = 1.0;
+
+    // Pick best English voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const naturalVoice = voices.find((v) => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Premium')));
+    if (naturalVoice) utterance.voice = naturalVoice;
+
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      setIsPaused(false);
+    };
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      setIsPaused(false);
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      setIsPaused(false);
+    };
+
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+    setShowTTSBar(true);
+  };
+
+  const pauseSpeech = () => {
+    if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+      window.speechSynthesis.pause();
+      setIsPaused(true);
+    }
+  };
+
+  const resumeSpeech = () => {
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+      setIsPaused(false);
+    } else {
+      startSpeech();
+    }
+  };
+
+  const stopSpeech = () => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+    setIsPaused(false);
+  };
+
+  const handleRateChange = (newRate: number) => {
+    setSpeechRate(newRate);
+    if (isSpeaking) {
+      stopSpeech();
+      setTimeout(startSpeech, 100);
+    }
+  };
 
   // Scroll tracker & Progress sync
   const handleScroll = () => {
@@ -113,14 +263,12 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
     const progress = Math.min(100, Math.round((scrollTop / (scrollHeight - clientHeight || 1)) * 100));
     setScrollProgress(progress);
 
-    // Save reading progress in background
     const currentChapter = story.chapters[currentChapterIndex];
     if (currentChapter) {
       saveReadingProgress(story.id, currentChapter.id, currentChapter.order, progress);
     }
   };
 
-  const isUnlocked = story ? isStoryUnlocked(story) : false;
   const currentChapter: Chapter | undefined = story?.chapters?.[currentChapterIndex];
 
   // Font classes
@@ -154,6 +302,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
 
   const handleNextChapter = () => {
     if (!story) return;
+    stopSpeech();
     if (currentChapterIndex < story.chapters.length - 1) {
       setCurrentChapterIndex((prev) => prev + 1);
       contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -161,9 +310,23 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   };
 
   const handlePrevChapter = () => {
+    if (!story) return;
+    stopSpeech();
     if (currentChapterIndex > 0) {
       setCurrentChapterIndex((prev) => prev - 1);
       contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleSelectChoice = (choice: StoryChoice) => {
+    if (!story) return;
+    stopSpeech();
+    const targetIdx = story.chapters.findIndex((c) => c.id === choice.nextChapterId);
+    if (targetIdx !== -1) {
+      setCurrentChapterIndex(targetIdx);
+      contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      handleNextChapter();
     }
   };
 
@@ -197,6 +360,81 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
     setShowBookmarkModal(false);
   };
 
+  const handleToggleOffline = () => {
+    if (!story) return;
+    if (isSavedOffline) {
+      api.removeOfflineStory(story.id);
+      setIsSavedOffline(false);
+    } else {
+      api.saveOfflineStory(story);
+      setIsSavedOffline(true);
+    }
+  };
+
+  const handlePostComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!story || !newCommentText.trim()) return;
+
+    setSubmittingComment(true);
+    try {
+      await api.addComment({
+        storyId: story.id,
+        chapterId: currentChapter?.id,
+        content: newCommentText.trim(),
+      });
+      setNewCommentText('');
+      await loadComments();
+    } catch (e: any) {
+      alert(e.message || 'Could not post comment');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handlePostReply = async (commentId: string) => {
+    if (!replyText.trim()) return;
+    try {
+      await api.addReply(commentId, replyText.trim());
+      setReplyingToCommentId(null);
+      setReplyText('');
+      await loadComments();
+    } catch (e: any) {
+      alert(e.message || 'Could not reply');
+    }
+  };
+
+  const handleLikeComment = async (commentId: string) => {
+    try {
+      await api.likeComment(commentId);
+      await loadComments();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!story || !reviewContent.trim()) return;
+
+    setSubmittingReview(true);
+    try {
+      await api.addReview({
+        storyId: story.id,
+        rating: userRating,
+        title: reviewTitle.trim() || 'Reader Review',
+        content: reviewContent.trim(),
+      });
+      setShowReviewModal(false);
+      setReviewContent('');
+      setReviewTitle('');
+      await loadReviews();
+    } catch (e: any) {
+      alert(e.message || 'Could not submit review');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 bg-zinc-900 text-white flex flex-col items-center justify-center space-y-4">
@@ -213,12 +451,12 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
           <Lock className="w-12 h-12 text-amber-500 mx-auto" />
           <h2 className="font-display text-2xl font-bold">Premium Story</h2>
           <p className="text-xs sm:text-sm text-zinc-400 font-reading leading-relaxed">
-            {error || 'This complete manuscript is locked. The first 2 books in StoryFlow are completely free.'}
+            {error || 'This complete manuscript is locked. Unlock it to read all chapters.'}
           </p>
           <div className="pt-2 flex flex-col sm:flex-row gap-3">
             <button
               onClick={onClose}
-              className="flex-1 py-2.5 px-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold rounded-xl"
+              className="flex-1 py-2.5 px-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold rounded-xl cursor-pointer"
             >
               Back to Catalog
             </button>
@@ -228,10 +466,10 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                   onClose();
                   onUnlockStory(story);
                 }}
-                className="flex-1 py-2.5 px-4 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 px-4 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-amber-600/20"
               >
                 <Lock className="w-3.5 h-3.5" />
-                <span>Unlock Book</span>
+                <span>Unlock Book (₦{story.priceNGN.toLocaleString()})</span>
               </button>
             )}
           </div>
@@ -243,41 +481,108 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   return (
     <div className={`fixed inset-0 z-50 flex flex-col ${themeClasses[readerSettings.theme]} transition-colors duration-200`}>
       {/* Top Reading Navigation Bar */}
-      <header className="h-14 border-b border-black/10 dark:border-white/10 px-4 flex items-center justify-between shrink-0 select-none bg-inherit/90 backdrop-blur-xs">
-        <div className="flex items-center gap-3">
+      <header className="h-14 border-b border-black/10 dark:border-white/10 px-3 sm:px-4 flex items-center justify-between shrink-0 select-none bg-inherit/90 backdrop-blur-xs">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
+            id="reader-exit-btn"
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
             title="Exit Reader"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
 
-          <div>
-            <h1 className="font-display text-xs sm:text-sm font-bold truncate max-w-[180px] sm:max-w-sm">
+          <div className="min-w-0">
+            <h1 className="font-display text-xs sm:text-sm font-bold truncate max-w-[160px] sm:max-w-sm">
               {story.title}
             </h1>
-            <p className="text-[10px] opacity-70 truncate max-w-[180px]">
-              Chapter {currentChapterIndex + 1} of {story.chapters.length}: {currentChapter?.title}
+            <p className="text-[10px] opacity-70 truncate max-w-[160px] sm:max-w-xs">
+              Ch. {currentChapterIndex + 1}: {currentChapter?.title}
             </p>
           </div>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-1">
-          {/* Table of Contents / Drawer */}
+          {/* Read Aloud Trigger */}
           <button
+            id="read-aloud-toggle-btn"
+            onClick={() => {
+              if (isSpeaking) {
+                stopSpeech();
+                setShowTTSBar(false);
+              } else {
+                startSpeech();
+              }
+            }}
+            className={`p-2 rounded-xl transition-colors cursor-pointer ${
+              isSpeaking ? 'bg-amber-500/20 text-amber-600 animate-pulse' : 'hover:bg-black/5 dark:hover:bg-white/10'
+            }`}
+            title="Read Aloud"
+          >
+            <Volume2 className="w-5 h-5" />
+          </button>
+
+          {/* Table of Contents */}
+          <button
+            id="reader-toc-btn"
             onClick={() => setShowDrawer(true)}
-            className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
             title="Table of Contents"
           >
             <List className="w-5 h-5" />
           </button>
 
+          {/* Discussion / Comments */}
+          <button
+            id="reader-comments-btn"
+            onClick={() => setShowCommentsDrawer(true)}
+            className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors relative cursor-pointer"
+            title="Reader Discussion"
+          >
+            <MessageSquare className="w-5 h-5" />
+            {comments.length > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500" />
+            )}
+          </button>
+
+          {/* Share Story/Chapter */}
+          <button
+            id="reader-share-btn"
+            onClick={() => setShowShareModal(true)}
+            className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+            title="Share Chapter"
+          >
+            <Share2 className="w-5 h-5" />
+          </button>
+
+          {/* Save to Collection */}
+          <button
+            id="reader-collection-btn"
+            onClick={() => setShowCollectionsModal(true)}
+            className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+            title="Save to Collection"
+          >
+            <Sparkles className="w-5 h-5 text-amber-500" />
+          </button>
+
+          {/* Offline Save Toggle */}
+          <button
+            id="reader-offline-toggle-btn"
+            onClick={handleToggleOffline}
+            className={`p-2 rounded-xl transition-colors cursor-pointer ${
+              isSavedOffline ? 'text-emerald-600' : 'hover:bg-black/5 dark:hover:bg-white/10 opacity-70'
+            }`}
+            title={isSavedOffline ? 'Saved Offline' : 'Download for Offline Reading'}
+          >
+            <Download className="w-5 h-5" />
+          </button>
+
           {/* Bookmark Toggle */}
           <button
+            id="reader-bookmark-btn"
             onClick={handleBookmarkToggle}
-            className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
             title={isCurrentChapterBookmarked ? 'Bookmarked' : 'Add Bookmark'}
           >
             {isCurrentChapterBookmarked ? (
@@ -289,16 +594,84 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
 
           {/* Reader Display Settings */}
           <button
+            id="reader-settings-btn"
             onClick={() => setShowSettings(!showSettings)}
-            className={`p-2 rounded-xl transition-colors ${
+            className={`p-2 rounded-xl transition-colors cursor-pointer ${
               showSettings ? 'bg-amber-500/20 text-amber-600' : 'hover:bg-black/5 dark:hover:bg-white/10'
             }`}
-            title="Display & Typography Settings"
+            title="Typography & Appearance"
           >
             <Settings className="w-5 h-5" />
           </button>
         </div>
       </header>
+
+      {/* Floating Read Aloud (TTS) Control Bar */}
+      {showTTSBar && (
+        <div className="bg-amber-500/10 dark:bg-amber-500/20 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between gap-4 text-xs select-none animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 text-amber-700 dark:text-amber-300 font-bold">
+              <Volume2 className="w-4 h-4 animate-bounce" />
+              <span>Read Aloud</span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {isSpeaking && !isPaused ? (
+                <button
+                  onClick={pauseSpeech}
+                  className="p-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600"
+                  title="Pause"
+                >
+                  <Pause className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <button
+                  onClick={resumeSpeech}
+                  className="p-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600"
+                  title="Play"
+                >
+                  <Play className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              <button
+                onClick={stopSpeech}
+                className="p-1.5 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20"
+                title="Stop"
+              >
+                <VolumeX className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Speed selector */}
+          <div className="flex items-center gap-1">
+            <span className="text-[11px] opacity-70">Speed:</span>
+            {[0.75, 1, 1.25, 1.5].map((rate) => (
+              <button
+                key={rate}
+                onClick={() => handleRateChange(rate)}
+                className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                  speechRate === rate
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-black/5 dark:bg-white/5 opacity-80'
+                }`}
+              >
+                {rate}x
+              </button>
+            ))}
+            <button
+              onClick={() => {
+                stopSpeech();
+                setShowTTSBar(false);
+              }}
+              className="ml-2 text-zinc-400 hover:text-zinc-600"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Reading Progress Indicator */}
       <div className="w-full h-1 bg-black/5 dark:bg-white/5">
@@ -332,6 +705,13 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                 )}
                 <div className="flex items-center justify-center gap-2 text-[11px] opacity-60 pt-1">
                   <span>{currentChapter.readMinutes} min read</span>
+                  <span>•</span>
+                  <span
+                    onClick={() => onAuthorClick && onAuthorClick(story.author)}
+                    className="hover:underline cursor-pointer font-medium"
+                  >
+                    by {story.author}
+                  </span>
                 </div>
               </div>
 
@@ -356,9 +736,87 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                 })}
               </div>
 
+              {/* Interactive Story Choice Branches (If Any) */}
+              {currentChapter.choices && currentChapter.choices.length > 0 && (
+                <div className="my-10 p-6 rounded-3xl bg-amber-500/5 dark:bg-amber-500/10 border-2 border-amber-500/30 space-y-4">
+                  <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+                    <GitBranch className="w-5 h-5" />
+                    <h3 className="font-serif font-bold text-base">
+                      Your Path, Your Choice
+                    </h3>
+                  </div>
+                  <p className="text-xs opacity-75">
+                    Select your next action to shape the outcome of this narrative:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                    {currentChapter.choices.map((choice) => (
+                      <button
+                        key={choice.id}
+                        onClick={() => handleSelectChoice(choice)}
+                        className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-amber-500/30 hover:border-amber-500 hover:shadow-lg transition-all text-left space-y-1.5 group cursor-pointer"
+                      >
+                        {choice.badge && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                            {choice.badge}
+                          </span>
+                        )}
+                        <div className="font-serif font-bold text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 group-hover:text-amber-600 dark:group-hover:text-amber-400">
+                          {choice.choiceText}
+                        </div>
+                        {choice.description && (
+                          <div className="text-[11px] opacity-65 leading-tight">
+                            {choice.description}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Story Completion / Interaction Footer: Ratings, Reviews, Discussion */}
+              <div className="pt-8 pb-4 space-y-6 border-t border-black/10 dark:border-white/10">
+                {/* Book Rating & Review Bar */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <StarRatingDisplay
+                    id="reader-story-rating"
+                    rating={story.rating}
+                    ratingsCount={story.ratingsCount}
+                    reviewCount={story.reviewCount}
+                    breakdown={story.ratingBreakdown}
+                    variant="compact"
+                    showCountText={true}
+                    showReviewsText={true}
+                    showRateButton={true}
+                    onRateClick={() => setShowReviewModal(true)}
+                  />
+                  
+                  <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                    <button
+                      id="reader-open-discussions-btn"
+                      onClick={() => setShowCommentsDrawer(true)}
+                      className="px-3 py-1.5 rounded-lg border border-black/15 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition-colors"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      <span>{comments.length} Discussion{comments.length === 1 ? '' : 's'}</span>
+                    </button>
+
+                    <button
+                      id="reader-report-story-btn"
+                      onClick={() => setShowReportModal(true)}
+                      className="text-red-500/80 hover:text-red-600 cursor-pointer text-xs font-medium flex items-center gap-1"
+                    >
+                      <Flag className="w-3 h-3" />
+                      <span>Report</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* Bottom Chapter Navigation */}
-              <div className="pt-12 pb-16 border-t border-black/10 dark:border-white/10 flex items-center justify-between gap-4 select-none">
+              <div className="pt-6 pb-16 flex items-center justify-between gap-4 select-none">
                 <button
+                  id="reader-prev-chapter-btn"
                   onClick={handlePrevChapter}
                   disabled={currentChapterIndex === 0}
                   className="px-4 py-2.5 rounded-xl border border-black/20 dark:border-white/20 text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed hover:bg-black/5 dark:hover:bg-white/10"
@@ -372,6 +830,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                 </span>
 
                 <button
+                  id="reader-next-chapter-btn"
                   onClick={handleNextChapter}
                   disabled={currentChapterIndex === story.chapters.length - 1}
                   className="px-4 py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
@@ -387,7 +846,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
 
       {/* Reader Settings Modal / Flyout */}
       {showSettings && (
-        <div className="fixed top-16 right-4 z-50 w-80 p-5 rounded-2xl bg-white dark:bg-zinc-900 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 space-y-5 animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="fixed top-16 right-4 z-50 w-80 p-5 rounded-2xl bg-white dark:bg-zinc-900 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 space-y-5 animate-fadeIn">
           <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
             <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
               Reader Appearance
@@ -410,7 +869,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                 <button
                   key={thm}
                   onClick={() => setReaderSettings({ ...readerSettings, theme: thm })}
-                  className={`h-9 rounded-xl border flex items-center justify-center transition-all ${
+                  className={`h-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
                     readerSettings.theme === thm ? 'ring-2 ring-amber-600 scale-105' : ''
                   } ${
                     thm === 'paper'
@@ -441,7 +900,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                 <button
                   key={f}
                   onClick={() => setReaderSettings({ ...readerSettings, fontFamily: f })}
-                  className={`py-1.5 rounded-xl border text-xs font-semibold capitalize transition-all ${
+                  className={`py-1.5 rounded-xl border text-xs font-semibold capitalize transition-all cursor-pointer ${
                     readerSettings.fontFamily === f
                       ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-600 text-amber-800 dark:text-amber-300'
                       : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'
@@ -463,7 +922,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                 <button
                   key={s}
                   onClick={() => setReaderSettings({ ...readerSettings, fontSize: s })}
-                  className={`py-1 rounded-lg border text-xs font-bold uppercase transition-all ${
+                  className={`py-1 rounded-lg border text-xs font-bold uppercase transition-all cursor-pointer ${
                     readerSettings.fontSize === s
                       ? 'bg-amber-600 border-amber-600 text-white'
                       : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'
@@ -484,7 +943,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
             className="fixed inset-0 bg-black/60 backdrop-blur-xs"
             onClick={() => setShowDrawer(false)}
           />
-          <div className="relative w-80 max-w-[80vw] bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col h-full z-10 shadow-2xl animate-in slide-in-from-left duration-200">
+          <div className="relative w-80 max-w-[80vw] bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col h-full z-10 shadow-2xl animate-fadeIn">
             <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
               <div>
                 <span className="text-[10px] uppercase font-bold text-amber-600 tracking-wider">
@@ -509,6 +968,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                   <button
                     key={ch.id || idx}
                     onClick={() => {
+                      stopSpeech();
                       setCurrentChapterIndex(idx);
                       setShowDrawer(false);
                       contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -534,6 +994,158 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Discussion & Comments Drawer */}
+      {showCommentsDrawer && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+            onClick={() => setShowCommentsDrawer(false)}
+          />
+          <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 flex flex-col h-full z-10 shadow-2xl animate-fadeIn">
+            <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-amber-500" />
+                <h3 className="font-serif font-bold text-base text-zinc-900 dark:text-zinc-100">
+                  Reader Discussion ({comments.length})
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowCommentsDrawer(false)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Comment Form */}
+            <form onSubmit={handlePostComment} className="p-4 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 space-y-2">
+              <textarea
+                value={newCommentText}
+                onChange={(e) => setNewCommentText(e.target.value)}
+                placeholder="Share your thoughts on this chapter..."
+                rows={2}
+                className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={submittingComment || !newCommentText.trim()}
+                  className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <Send className="w-3 h-3" />
+                  <span>Post</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Comment Stream */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {comments.length === 0 ? (
+                <div className="py-12 text-center text-zinc-400 text-xs">
+                  No comments yet. Be the first to start the discussion!
+                </div>
+              ) : (
+                comments.map((comm) => (
+                  <div key={comm.id} className="space-y-2 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-100 dark:border-zinc-800">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-zinc-700 text-white text-[10px] font-bold flex items-center justify-center">
+                          {comm.userName.charAt(0)}
+                        </div>
+                        <span className="font-bold text-xs text-zinc-900 dark:text-zinc-100">
+                          {comm.userName}
+                        </span>
+                        {comm.isAuthor && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500 text-white">
+                            AUTHOR
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-zinc-400">
+                        {new Date(comm.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-serif">
+                      {comm.content}
+                    </p>
+
+                    <div className="flex items-center justify-between pt-1 text-[11px] text-zinc-400">
+                      <button
+                        onClick={() => handleLikeComment(comm.id)}
+                        className="flex items-center gap-1 hover:text-red-500 cursor-pointer"
+                      >
+                        <Heart className="w-3.5 h-3.5" />
+                        <span>{comm.likes || 0}</span>
+                      </button>
+
+                      <button
+                        onClick={() => setReplyingToCommentId(replyingToCommentId === comm.id ? null : comm.id)}
+                        className="hover:underline cursor-pointer"
+                      >
+                        Reply
+                      </button>
+                    </div>
+
+                    {/* Replies */}
+                    {comm.replies && comm.replies.length > 0 && (
+                      <div className="pl-4 space-y-2 pt-2 border-l-2 border-zinc-200 dark:border-zinc-800">
+                        {comm.replies.map((rep) => (
+                          <div key={rep.id} className="text-xs space-y-0.5">
+                            <div className="flex items-center gap-1.5 font-bold text-[11px] text-zinc-800 dark:text-zinc-200">
+                              <CornerDownRight className="w-3 h-3 text-zinc-400" />
+                              <span>{rep.userName}</span>
+                              {rep.isAuthor && (
+                                <span className="px-1 rounded text-[8px] bg-amber-500 text-white">AUTHOR</span>
+                              )}
+                            </div>
+                            <p className="pl-4 text-zinc-600 dark:text-zinc-400 text-[11px]">
+                              {rep.content}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Reply Input */}
+                    {replyingToCommentId === comm.id && (
+                      <div className="pt-2 flex gap-2">
+                        <input
+                          type="text"
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          placeholder="Write a reply..."
+                          className="flex-1 px-3 py-1.5 text-xs rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
+                        />
+                        <button
+                          onClick={() => handlePostReply(comm.id)}
+                          className="px-3 py-1.5 rounded-lg bg-amber-500 text-white font-bold text-xs"
+                        >
+                          Send
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upgraded Review & Rating Modal */}
+      {showReviewModal && story && (
+        <RateStoryModal
+          isOpen={showReviewModal}
+          onClose={() => setShowReviewModal(false)}
+          story={story}
+          onRatingSuccess={(updatedStory) => {
+            setStory(updatedStory);
+            loadReviews();
+          }}
+        />
       )}
 
       {/* Bookmark Note Modal */}
@@ -566,6 +1178,36 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Report Modal */}
+      {showReportModal && story && (
+        <ReportContentModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          targetType="story"
+          targetId={story.id}
+          targetTitle={story.title}
+        />
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && story && (
+        <ShareStoryModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          story={story}
+          chapter={currentChapter}
+        />
+      )}
+
+      {/* Collections Modal */}
+      {showCollectionsModal && story && (
+        <CollectionsModal
+          isOpen={showCollectionsModal}
+          onClose={() => setShowCollectionsModal(false)}
+          story={story}
+        />
       )}
     </div>
   );

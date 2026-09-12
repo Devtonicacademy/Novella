@@ -1,3 +1,12 @@
+export interface StoryChoice {
+  id: string;
+  choiceText: string;
+  nextChapterId: string;
+  description?: string;
+  badge?: string;
+  consequencesPreview?: string;
+}
+
 export interface Chapter {
   id: string;
   order: number;
@@ -5,11 +14,23 @@ export interface Chapter {
   subtitle?: string;
   readMinutes: number;
   content: string;
-  status?: 'published' | 'draft';
+  status?: 'published' | 'draft' | 'scheduled';
+  scheduledPublishDate?: string;
+  isPremium?: boolean;
+  choices?: StoryChoice[];
   updatedAt?: string;
 }
 
 export type StoryCategory = 
+  | 'Adventure'
+  | 'Romance'
+  | 'Mystery'
+  | 'Horror'
+  | 'Comedy'
+  | 'Fantasy'
+  | 'African Stories'
+  | 'Moral Stories'
+  | 'School Stories'
   | 'Political Satire'
   | 'Poetry & Satire'
   | 'Contemporary Verse'
@@ -17,11 +38,9 @@ export type StoryCategory =
   | 'Historical' 
   | 'Sci-Fi & Fantasy' 
   | 'Mystery & Thriller' 
-  | 'Romance' 
   | 'Afrofuturism' 
   | 'Memoir'
   | 'Mythology'
-  | 'Adventure'
   | string;
 
 export interface Story {
@@ -31,6 +50,7 @@ export interface Story {
   author: string;
   authorId?: string;
   authorBio?: string;
+  authorAvatar?: string;
   category: StoryCategory;
   description: string;
   synopsis?: string;
@@ -46,13 +66,30 @@ export interface Story {
   priceNGN: number;
   priceUSD: number;
   rating: number;
+  ratingsCount?: number;
   reviewCount: number;
+  ratingBreakdown?: {
+    5: number;
+    4: number;
+    3: number;
+    2: number;
+    1: number;
+  };
   totalChapters: number;
   readTime: string;
   tags: string[];
   publishedYear: number;
-  status?: 'published' | 'draft' | 'archived';
+  status?: 'published' | 'draft' | 'scheduled' | 'archived';
+  scheduledPublishDate?: string;
   featured?: boolean;
+  isInteractive?: boolean; // Branching story choices
+  favoritesCount?: number;
+  likesCount?: number;
+  viewsCount?: number;
+  weeklyEngagementScore?: number;
+  isFavorite?: boolean;
+  isLiked?: boolean;
+  isOfflineAvailable?: boolean;
   totalReads?: number;
   totalRevenueNGN?: number;
   completionRate?: number;
@@ -78,10 +115,137 @@ export interface ReadingProgress {
   currentChapterOrder: number;
   percentage: number;
   lastReadAt: string;
+  totalMinutesSpent?: number;
+  choiceHistory?: { chapterId: string; choiceId: string }[];
 }
 
-export type UserRole = 'customer' | 'admin' | 'super_admin' | 'content_admin' | 'support_admin' | 'finance_admin' | 'user';
+export type UserRole = 'customer' | 'author' | 'admin' | 'super_admin' | 'content_admin' | 'support_admin' | 'finance_admin' | 'user';
 export type AdminRole = UserRole;
+
+export interface ReadingStreak {
+  currentStreak: number;
+  longestStreak: number;
+  lastActiveDate: string; // YYYY-MM-DD
+  streakHistory: string[]; // list of dates
+}
+
+export interface ReadingGoals {
+  storiesMonthlyTarget: number;
+  storiesReadThisMonth: number;
+  chaptersWeeklyTarget: number;
+  chaptersReadThisWeek: number;
+  minutesDailyTarget: number;
+  minutesReadToday: number;
+  lastResetDate?: string;
+}
+
+export interface StoryCollection {
+  id: string;
+  name: string;
+  description?: string;
+  storyIds: string[];
+  isDefault?: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ReaderAchievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  category: 'reading' | 'streak' | 'social' | 'explorer';
+  targetCount: number;
+  currentCount: number;
+  unlocked: boolean;
+  unlockedAt?: string;
+}
+
+export interface ActivityFeedItem {
+  id: string;
+  authorId?: string;
+  authorName?: string;
+  authorAvatar?: string;
+  actorName?: string;
+  actorAvatar?: string;
+  type: 'new_story' | 'new_chapter' | 'announcement' | 'milestone' | 'chapter_release' | 'streak_milestone' | 'story_review' | 'author_announcement' | string;
+  title: string;
+  description?: string;
+  content?: string;
+  storyId?: string;
+  chapterId?: string;
+  createdAt: string;
+  timestamp?: string;
+  likes?: number;
+  likesCount?: number;
+  isLiked?: boolean;
+  likedBy?: string[];
+}
+
+export interface AICharacterProfile {
+  name: string;
+  alias?: string;
+  archetype: string;
+  role: string;
+  personality: string[];
+  background?: string;
+  backstory?: string;
+  motivation?: string;
+  flaw?: string;
+  secret?: string;
+  catchphrase?: string;
+  goals?: {
+    internal: string;
+    external: string;
+  };
+  strengths?: string[];
+  weaknesses?: string[];
+  voiceAndDialogue?: string;
+  keyRelationships?: string;
+}
+
+export interface AIStoryIdea {
+  title: string;
+  logline: string;
+  premise: string;
+  theme?: string;
+  genre?: string;
+  setting?: string;
+  protagonist?: string;
+  antagonist?: string;
+  keyConflicts?: string[];
+  majorPlotPoints?: string[];
+  plotTwist?: string;
+  twist?: string;
+  chapterOutline?: string[];
+}
+
+export interface AITitleSuggestion {
+  title: string;
+  subtitle: string;
+  tagline?: string;
+  hook?: string;
+  tone: string;
+  category: string;
+}
+
+export interface StoryTranslation {
+  languageCode: string;
+  languageName: string;
+  translatedTitle: string;
+  translatedSubtitle?: string;
+  translatedDescription: string;
+  translatedChapters: {
+    chapterId: string;
+    title: string;
+    content: string;
+  }[];
+}
+
+export interface RecentlyViewedItem {
+  storyId: string;
+  viewedAt: string;
+}
 
 export interface UserProfile {
   id: string;
@@ -89,12 +253,28 @@ export interface UserProfile {
   displayName: string;
   fullName?: string;
   avatar?: string;
+  bio?: string;
   unlockedStoryIds: string[];
+  favoriteStoryIds?: string[];
+  likedStoryIds?: string[];
+  followingAuthorIds?: string[];
+  followersCount?: number;
+  followingUserIds?: string[];
+  collections?: StoryCollection[];
+  readingStreak?: ReadingStreak;
+  readingGoals?: ReadingGoals;
+  achievements?: ReaderAchievement[];
+  recentlyViewed?: RecentlyViewedItem[];
+  recentlyViewedStoryIds?: string[];
+  readerPreferences?: ReaderSettings;
   bookmarks: UserBookmark[];
   readingProgress: Record<string, ReadingProgress>; // keyed by storyId
   role: UserRole;
   status?: 'active' | 'suspended' | 'pending';
+  suspendedReason?: string;
+  suspendedUntil?: string;
   totalReadingMinutes?: number;
+  booksCompletedCount?: number;
   createdAt: string;
   lastActiveAt?: string;
   authProvider?: 'password' | 'google';
@@ -109,7 +289,7 @@ export interface AuthResponse {
 export interface ForgotPasswordResponse {
   success: boolean;
   message: string;
-  resetToken?: string; // provided for development/sandbox demo convenience
+  resetToken?: string;
 }
 
 export interface PaystackTransaction {
@@ -133,6 +313,7 @@ export interface Author {
   name: string;
   bio: string;
   avatar?: string;
+  bannerImage?: string;
   country?: string;
   nationality?: string;
   primaryGenre?: StoryCategory;
@@ -140,11 +321,14 @@ export interface Author {
   totalStories?: number;
   totalReads?: number;
   totalRevenueNGN?: number;
+  followersCount?: number;
+  averageRating?: number;
   featured?: boolean;
   socialLinks?: Record<string, string>;
   awards?: string[];
   status?: 'active' | 'invited' | 'inactive';
   joinedDate?: string;
+  verified?: boolean;
 }
 
 export interface CategoryInfo {
@@ -157,6 +341,140 @@ export interface CategoryInfo {
   bookCount?: number;
   isFeatured?: boolean;
   order?: number;
+}
+
+export interface Review {
+  id: string;
+  storyId: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  userAvatar?: string;
+  rating: number; // 1 to 5
+  title: string;
+  content: string;
+  hasSpoilers?: boolean;
+  likes: number;
+  likedBy?: string[];
+  createdAt: string;
+  updatedAt?: string;
+  status?: 'approved' | 'pending' | 'flagged';
+}
+
+export interface UserStoryRating {
+  id: string;
+  storyId: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  rating: number; // 1 to 5
+  title?: string;
+  content?: string;
+  hasSpoilers?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoryRatingSummary {
+  storyId: string;
+  averageRating: number;
+  ratingsCount: number;
+  reviewCount: number;
+  breakdown: {
+    5: number;
+    4: number;
+    3: number;
+    2: number;
+    1: number;
+  };
+  userRating?: number;
+  userReview?: Review;
+}
+
+export interface CommentReply {
+  id: string;
+  commentId: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  userAvatar?: string;
+  userRole?: string;
+  content: string;
+  likes: number;
+  likedBy?: string[];
+  createdAt: string;
+  isAuthor?: boolean;
+}
+
+export interface Comment {
+  id: string;
+  storyId: string;
+  chapterId?: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  userAvatar?: string;
+  userRole?: string;
+  content: string;
+  likes: number;
+  likedBy?: string[];
+  replies?: CommentReply[];
+  createdAt: string;
+  isAuthor?: boolean;
+  isPinned?: boolean;
+  status?: 'approved' | 'flagged' | 'hidden';
+}
+
+export interface AppNotification {
+  id: string;
+  userId?: string;
+  title: string;
+  message: string;
+  type: 'new_chapter' | 'new_story' | 'comment' | 'review' | 'author_update' | 'system' | 'purchase' | 'earnings';
+  storyId?: string;
+  chapterId?: string;
+  authorId?: string;
+  linkUrl?: string;
+  read: boolean;
+  createdAt: string;
+  avatar?: string;
+}
+
+export interface ContentReport {
+  id: string;
+  reporterId: string;
+  reporterEmail: string;
+  reporterName: string;
+  targetType: 'story' | 'chapter' | 'comment' | 'author' | 'review';
+  targetId: string;
+  targetTitle?: string;
+  reason: 'inappropriate' | 'copyright' | 'spam' | 'harassment' | 'offensive' | 'other';
+  details: string;
+  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
+  createdAt: string;
+  resolutionNotes?: string;
+  resolvedBy?: string;
+}
+
+export interface PayoutRecord {
+  id: string;
+  amountNGN: number;
+  status: 'completed' | 'pending' | 'processing';
+  requestedAt: string;
+  paidAt?: string;
+  bankDetails?: string;
+}
+
+export interface AuthorEarnings {
+  authorId: string;
+  authorName: string;
+  totalRevenueNGN: number;
+  authorSplitNGN: number; // e.g. 70%
+  platformCommissionNGN: number; // e.g. 30%
+  pendingPayoutNGN: number;
+  paidPayoutNGN: number;
+  totalSalesCount: number;
+  payoutHistory: PayoutRecord[];
 }
 
 export interface Announcement {
@@ -210,7 +528,7 @@ export interface AuditLog {
   userEmail?: string;
   adminRole?: AdminRole;
   action: string;
-  category?: 'book' | 'chapter' | 'price' | 'user' | 'payment' | 'announcement' | 'settings' | 'security';
+  category?: 'book' | 'chapter' | 'price' | 'user' | 'payment' | 'announcement' | 'settings' | 'security' | 'moderation' | 'ai';
   target?: string;
   targetTitle?: string;
   details: string;
@@ -227,6 +545,7 @@ export interface PlatformSettings {
   currency?: string;
   defaultPriceNGN?: number;
   ngnToUsdRate?: number;
+  authorRevenueSharePercentage?: number; // default: 70
   paystackPublicKey?: string;
   paystackSecretKeyMasked?: string;
   isLiveMode?: boolean;
@@ -236,6 +555,11 @@ export interface PlatformSettings {
   requireAuthForFreeBooks?: boolean;
   enableTextSelectionPrevention?: boolean;
   allowReaderReviews?: boolean;
+  enableAiStoryGenerator?: boolean;
+  enableInteractiveStories?: boolean;
+  enableSpeechSynthesis?: boolean;
+  blockedWords?: string[];
+  autoFilterProfanity?: boolean;
 }
 
 export interface StoryAnalytics {
@@ -250,15 +574,26 @@ export interface StoryAnalytics {
   dropoffByChapter?: { chapterOrder: number; chapterTitle: string; dropoffPercentage: number }[];
 }
 
-export type ReaderFontFamily = 'serif' | 'sans' | 'mono';
+export type ReaderFontFamily = 'serif' | 'sans' | 'mono' | 'dyslexic';
 export type ReaderFontSize = 'sm' | 'base' | 'lg' | 'xl' | '2xl';
 export type ReaderTheme = 'paper' | 'sepia' | 'parchment' | 'night' | 'oled';
 
 export interface ReaderSettings {
   fontFamily: ReaderFontFamily;
   fontSize: ReaderFontSize;
-  lineHeight: 'normal' | 'relaxed' | 'loose';
+  lineHeight: 'tight' | 'normal' | 'relaxed' | 'loose';
   theme: ReaderTheme;
-  maxWidth: 'narrow' | 'normal' | 'wide';
+  maxWidth: 'narrow' | 'normal' | 'wide' | 'full';
 }
 
+export interface AIGenerateStoryRequest {
+  prompt: string;
+  genre: StoryCategory;
+  characters?: string;
+  setting?: string;
+  theme?: string;
+  length?: 'short' | 'medium' | 'epic';
+  chaptersCount?: number;
+  interactive?: boolean;
+  tone?: string;
+}

@@ -504,6 +504,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         </div>
       </div>
+      </div>
 
       {/* Google Account Selector Dialog */}
       <GoogleAccountChooserModal
