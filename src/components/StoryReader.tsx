@@ -38,7 +38,8 @@ import {
   Send,
   Heart,
   CornerDownRight,
-  WifiOff
+  WifiOff,
+  MoreVertical
 } from 'lucide-react';
 import { ReportContentModal } from './ReportContentModal';
 import { StarRatingDisplay } from './StarRatingDisplay';
@@ -70,6 +71,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   const [showBookmarkModal, setShowBookmarkModal] = useState(false);
   const [bookmarkNote, setBookmarkNote] = useState('');
   
@@ -483,29 +485,29 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
   return (
     <div className={`fixed inset-0 z-50 flex flex-col ${themeClasses[readerSettings.theme]} transition-colors duration-200`}>
       {/* Top Reading Navigation Bar */}
-      <header className="h-14 border-b border-black/10 dark:border-white/10 px-3 sm:px-4 flex items-center justify-between shrink-0 select-none bg-inherit/90 backdrop-blur-xs">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+      <header className="h-14 border-b border-black/10 dark:border-white/10 px-3 sm:px-4 flex items-center justify-between shrink-0 select-none bg-inherit/90 backdrop-blur-xs pt-safe">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1 mr-2">
           <button
             id="reader-exit-btn"
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
+            className="p-1.5 sm:p-2 -ml-1 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
             title="Exit Reader"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
 
-          <div className="min-w-0">
-            <h1 className="font-display text-xs sm:text-sm font-bold truncate max-w-[160px] sm:max-w-sm">
+          <div className="min-w-0 flex-1">
+            <h1 className="font-display text-xs sm:text-sm font-bold truncate">
               {story.title}
             </h1>
-            <p className="text-[10px] opacity-70 truncate max-w-[160px] sm:max-w-xs">
+            <p className="text-[10px] opacity-70 truncate">
               Ch. {currentChapterIndex + 1}: {currentChapter?.title}
             </p>
           </div>
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
           {/* Read Aloud Trigger */}
           <button
             id="read-aloud-toggle-btn"
@@ -517,93 +519,117 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                 startSpeech();
               }
             }}
-            className={`p-2 rounded-xl transition-colors cursor-pointer ${
+            className={`p-1.5 sm:p-2 rounded-xl transition-colors cursor-pointer ${
               isSpeaking ? 'bg-amber-500/20 text-amber-600 animate-pulse' : 'hover:bg-black/5 dark:hover:bg-white/10'
             }`}
             title="Read Aloud"
           >
-            <Volume2 className="w-5 h-5" />
+            <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
-          {/* Table of Contents */}
-          <button
-            id="reader-toc-btn"
-            onClick={() => setShowDrawer(true)}
-            className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-            title="Table of Contents"
-          >
-            <List className="w-5 h-5" />
-          </button>
+          {/* Desktop-only Direct Buttons */}
+          <div className="hidden sm:flex items-center gap-1">
+            {/* Table of Contents */}
+            <button
+              id="reader-toc-btn"
+              onClick={() => setShowDrawer(true)}
+              className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              title="Table of Contents"
+            >
+              <List className="w-5 h-5" />
+            </button>
 
-          {/* Discussion / Comments */}
-          <button
-            id="reader-comments-btn"
-            onClick={() => setShowCommentsDrawer(true)}
-            className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors relative cursor-pointer"
-            title="Reader Discussion"
-          >
-            <MessageSquare className="w-5 h-5" />
-            {comments.length > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500" />
-            )}
-          </button>
+            {/* Discussion / Comments */}
+            <button
+              id="reader-comments-btn"
+              onClick={() => setShowCommentsDrawer(true)}
+              className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors relative cursor-pointer"
+              title="Reader Discussion"
+            >
+              <MessageSquare className="w-5 h-5" />
+              {comments.length > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500" />
+              )}
+            </button>
 
-          {/* Share Story/Chapter */}
-          <button
-            id="reader-share-btn"
-            onClick={() => setShowShareModal(true)}
-            className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-            title="Share Chapter"
-          >
-            <Share2 className="w-5 h-5" />
-          </button>
+            {/* Share Story/Chapter */}
+            <button
+              id="reader-share-btn"
+              onClick={() => setShowShareModal(true)}
+              className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              title="Share Chapter"
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
 
-          {/* Save to Collection */}
-          <button
-            id="reader-collection-btn"
-            onClick={() => setShowCollectionsModal(true)}
-            className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-            title="Save to Collection"
-          >
-            <Sparkles className="w-5 h-5 text-amber-500" />
-          </button>
+            {/* Save to Collection */}
+            <button
+              id="reader-collection-btn"
+              onClick={() => setShowCollectionsModal(true)}
+              className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              title="Save to Collection"
+            >
+              <Sparkles className="w-5 h-5 text-amber-500" />
+            </button>
 
-          {/* Offline Save Toggle */}
-          <button
-            id="reader-offline-toggle-btn"
-            onClick={handleToggleOffline}
-            className={`p-2 rounded-xl transition-colors cursor-pointer ${
-              isSavedOffline ? 'text-emerald-600' : 'hover:bg-black/5 dark:hover:bg-white/10 opacity-70'
-            }`}
-            title={isSavedOffline ? 'Saved Offline' : 'Download for Offline Reading'}
-          >
-            <Download className="w-5 h-5" />
-          </button>
+            {/* Offline Save Toggle */}
+            <button
+              id="reader-offline-toggle-btn"
+              onClick={handleToggleOffline}
+              className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                isSavedOffline ? 'text-emerald-600' : 'hover:bg-black/5 dark:hover:bg-white/10 opacity-70'
+              }`}
+              title={isSavedOffline ? 'Saved Offline' : 'Download for Offline Reading'}
+            >
+              <Download className="w-5 h-5" />
+            </button>
+          </div>
 
-          {/* Bookmark Toggle */}
+          {/* Bookmark Toggle (Mobile & Desktop) */}
           <button
             id="reader-bookmark-btn"
             onClick={handleBookmarkToggle}
-            className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
             title={isCurrentChapterBookmarked ? 'Bookmarked' : 'Add Bookmark'}
           >
             {isCurrentChapterBookmarked ? (
-              <BookmarkCheck className="w-5 h-5 text-amber-600 fill-amber-600" />
+              <BookmarkCheck className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 fill-amber-600" />
             ) : (
-              <Bookmark className="w-5 h-5" />
+              <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
             )}
           </button>
 
           {/* Reader Display Settings */}
           <button
             id="reader-settings-btn"
-            onClick={() => setShowSettings(!showSettings)}
-            className={`p-2 rounded-xl transition-colors cursor-pointer ${
+            onClick={() => {
+              setShowMobileMoreMenu(false);
+              setShowSettings(!showSettings);
+            }}
+            className={`p-1.5 sm:p-2 rounded-xl transition-colors cursor-pointer ${
               showSettings ? 'bg-amber-500/20 text-amber-600' : 'hover:bg-black/5 dark:hover:bg-white/10'
             }`}
             title="Typography & Appearance"
           >
-            <Settings className="w-5 h-5" />
+            <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+
+          {/* Mobile More Options Button */}
+          <button
+            id="reader-mobile-more-btn"
+            onClick={() => {
+              setShowSettings(false);
+              setShowMobileMoreMenu(!showMobileMoreMenu);
+            }}
+            className={`sm:hidden p-1.5 rounded-xl transition-colors relative cursor-pointer ${
+              showMobileMoreMenu ? 'bg-amber-500/20 text-amber-600' : 'hover:bg-black/5 dark:hover:bg-white/10'
+            }`}
+            title="Reader Options"
+          >
+            <MoreVertical className="w-4 h-4" />
+            {comments.length > 0 && (
+              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-500" />
+            )}
           </button>
         </div>
       </header>
@@ -687,17 +713,17 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
       <main
         ref={contentRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-12 py-8 sm:py-12"
+        className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-12 py-6 sm:py-12 max-w-full overflow-x-hidden touch-scroll"
       >
         <div className={`mx-auto ${maxWidthClasses[readerSettings.maxWidth]}`}>
           {currentChapter && (
             <article className="space-y-6">
               {/* Chapter Header */}
-              <div className="text-center pb-8 border-b border-black/10 dark:border-white/10 space-y-2">
+              <div className="text-center pb-6 sm:pb-8 border-b border-black/10 dark:border-white/10 space-y-2">
                 <span className="text-[11px] font-mono tracking-widest uppercase opacity-60">
                   Chapter {currentChapter.order < 10 ? `0${currentChapter.order}` : currentChapter.order}
                 </span>
-                <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-tight">
+                <h2 className="font-display text-xl sm:text-3xl lg:text-4xl font-extrabold leading-tight break-words">
                   {currentChapter.title}
                 </h2>
                 {currentChapter.subtitle && (
@@ -721,15 +747,15 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
               <div
                 className={`prose max-w-none ${fontFamilies[readerSettings.fontFamily]} ${
                   fontSizes[readerSettings.fontSize]
-                } space-y-6 pt-4 text-justify sm:text-left`}
+                } space-y-5 sm:space-y-6 pt-4 text-left sm:text-justify leading-relaxed break-words`}
               >
                 {currentChapter.content.split('\n\n').map((paragraph, pIdx) => {
                   const isFirst = pIdx === 0;
                   return (
                     <p
                       key={pIdx}
-                      className={`leading-relaxed whitespace-pre-line ${
-                        isFirst ? 'first-letter:font-display first-letter:text-4xl first-letter:font-bold first-letter:float-left first-letter:mr-2 first-letter:leading-none' : ''
+                      className={`leading-relaxed whitespace-pre-line break-words ${
+                        isFirst ? 'first-letter:font-display first-letter:text-3xl sm:first-letter:text-4xl first-letter:font-bold first-letter:float-left first-letter:mr-2 first-letter:leading-none' : ''
                       }`}
                     >
                       {paragraph}
@@ -816,15 +842,16 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
               </div>
 
               {/* Bottom Chapter Navigation */}
-              <div className="pt-6 pb-16 flex items-center justify-between gap-4 select-none">
+              <div className="pt-6 pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))] sm:pb-16 flex items-center justify-between gap-3 select-none">
                 <button
                   id="reader-prev-chapter-btn"
                   onClick={handlePrevChapter}
                   disabled={currentChapterIndex === 0}
-                  className="px-4 py-2.5 rounded-xl border border-black/20 dark:border-white/20 text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed hover:bg-black/5 dark:hover:bg-white/10"
+                  className="py-2.5 sm:py-3 px-3.5 sm:px-4 rounded-xl border border-black/20 dark:border-white/20 text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed hover:bg-black/5 dark:hover:bg-white/10 min-h-[44px]"
                 >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span>Previous Chapter</span>
+                  <ChevronLeft className="w-4 h-4 shrink-0" />
+                  <span className="hidden sm:inline">Previous Chapter</span>
+                  <span className="sm:hidden">Prev Ch.</span>
                 </button>
 
                 <span className="text-xs font-mono opacity-60">
@@ -835,10 +862,11 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                   id="reader-next-chapter-btn"
                   onClick={handleNextChapter}
                   disabled={currentChapterIndex === story.chapters.length - 1}
-                  className="px-4 py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                  className="py-2.5 sm:py-3 px-3.5 sm:px-4 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed min-h-[44px]"
                 >
-                  <span>Next Chapter</span>
-                  <ChevronRight className="w-4 h-4" />
+                  <span className="hidden sm:inline">Next Chapter</span>
+                  <span className="sm:hidden">Next Ch.</span>
+                  <ChevronRight className="w-4 h-4 shrink-0" />
                 </button>
               </div>
             </article>
@@ -846,96 +874,197 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
         </div>
       </main>
 
-      {/* Reader Settings Modal / Flyout */}
+      {/* Reader Settings Modal / Mobile Bottom Sheet */}
       {showSettings && (
-        <div className="fixed top-16 right-4 z-50 w-80 p-5 rounded-2xl bg-white dark:bg-zinc-900 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 space-y-5 animate-fadeIn">
-          <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-              Reader Appearance
-            </span>
-            <button
-              onClick={() => setShowSettings(false)}
-              className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs sm:hidden"
+            onClick={() => setShowSettings(false)}
+          />
+          <div className="fixed inset-x-0 bottom-0 sm:inset-x-auto sm:top-16 sm:right-4 sm:bottom-auto z-50 w-full sm:w-80 p-5 rounded-t-3xl sm:rounded-2xl pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] sm:pb-5 bg-white dark:bg-zinc-900 shadow-2xl border-t sm:border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 space-y-5 animate-fadeIn">
+            {/* Mobile Sheet Drag Handle */}
+            <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto -mt-1 mb-2 sm:hidden" />
 
-          {/* Theme Palette */}
-          <div>
-            <label className="text-[11px] font-semibold text-zinc-500 uppercase block mb-1.5">
-              Reading Canvas Theme
-            </label>
-            <div className="grid grid-cols-5 gap-1.5">
-              {(['paper', 'sepia', 'parchment', 'night', 'oled'] as ReaderTheme[]).map((thm) => (
-                <button
-                  key={thm}
-                  onClick={() => setReaderSettings({ ...readerSettings, theme: thm })}
-                  className={`h-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
-                    readerSettings.theme === thm ? 'ring-2 ring-amber-600 scale-105' : ''
-                  } ${
-                    thm === 'paper'
-                      ? 'bg-[#faf9f6] text-zinc-800 border-zinc-300'
-                      : thm === 'sepia'
-                      ? 'bg-[#f4ecd8] text-[#3e2723] border-[#d7ccc8]'
-                      : thm === 'parchment'
-                      ? 'bg-[#efe6d5] text-[#2b251f] border-[#d7cbbe]'
-                      : thm === 'night'
-                      ? 'bg-[#18181b] text-zinc-200 border-zinc-700'
-                      : 'bg-black text-zinc-300 border-zinc-800'
-                  }`}
-                  title={thm}
-                >
-                  <span className="text-[10px] font-bold uppercase">{thm.slice(0, 3)}</span>
-                </button>
-              ))}
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                Reader Appearance
+              </span>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Theme Palette */}
+            <div>
+              <label className="text-[11px] font-semibold text-zinc-500 uppercase block mb-1.5">
+                Reading Canvas Theme
+              </label>
+              <div className="grid grid-cols-5 gap-1.5">
+                {(['paper', 'sepia', 'parchment', 'night', 'oled'] as ReaderTheme[]).map((thm) => (
+                  <button
+                    key={thm}
+                    onClick={() => setReaderSettings({ ...readerSettings, theme: thm })}
+                    className={`h-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
+                      readerSettings.theme === thm ? 'ring-2 ring-amber-600 scale-105' : ''
+                    } ${
+                      thm === 'paper'
+                        ? 'bg-[#faf9f6] text-zinc-800 border-zinc-300'
+                        : thm === 'sepia'
+                        ? 'bg-[#f4ecd8] text-[#3e2723] border-[#d7ccc8]'
+                        : thm === 'parchment'
+                        ? 'bg-[#efe6d5] text-[#2b251f] border-[#d7cbbe]'
+                        : thm === 'night'
+                        ? 'bg-[#18181b] text-zinc-200 border-zinc-700'
+                        : 'bg-black text-zinc-300 border-zinc-800'
+                    }`}
+                    title={thm}
+                  >
+                    <span className="text-[10px] font-bold uppercase">{thm.slice(0, 3)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Font Family */}
+            <div>
+              <label className="text-[11px] font-semibold text-zinc-500 uppercase block mb-1.5">
+                Typography Style
+              </label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(['serif', 'sans', 'mono'] as ReaderFontFamily[]).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setReaderSettings({ ...readerSettings, fontFamily: f })}
+                    className={`py-2 rounded-xl border text-xs font-semibold capitalize transition-all cursor-pointer ${
+                      readerSettings.fontFamily === f
+                        ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-600 text-amber-800 dark:text-amber-300 font-bold'
+                        : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Font Size */}
+            <div>
+              <label className="text-[11px] font-semibold text-zinc-500 uppercase block mb-1.5">
+                Font Scale
+              </label>
+              <div className="grid grid-cols-5 gap-1">
+                {(['sm', 'base', 'lg', 'xl', '2xl'] as ReaderFontSize[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setReaderSettings({ ...readerSettings, fontSize: s })}
+                    className={`py-2 rounded-lg border text-xs font-bold uppercase transition-all cursor-pointer ${
+                      readerSettings.fontSize === s
+                        ? 'bg-amber-600 border-amber-600 text-white'
+                        : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
+        </>
+      )}
 
-          {/* Font Family */}
-          <div>
-            <label className="text-[11px] font-semibold text-zinc-500 uppercase block mb-1.5">
-              Typography Style
-            </label>
-            <div className="grid grid-cols-3 gap-1.5">
-              {(['serif', 'sans', 'mono'] as ReaderFontFamily[]).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setReaderSettings({ ...readerSettings, fontFamily: f })}
-                  className={`py-1.5 rounded-xl border text-xs font-semibold capitalize transition-all cursor-pointer ${
-                    readerSettings.fontFamily === f
-                      ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-600 text-amber-800 dark:text-amber-300'
-                      : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
+      {/* Mobile Reader Quick Action Sheet */}
+      {showMobileMoreMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs sm:hidden"
+            onClick={() => setShowMobileMoreMenu(false)}
+          />
+          <div className="fixed inset-x-0 bottom-0 z-50 w-full p-5 rounded-t-3xl pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] bg-white dark:bg-zinc-900 shadow-2xl border-t border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 space-y-4 animate-fadeIn sm:hidden">
+            <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto -mt-1 mb-2" />
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                Reader Options
+              </span>
+              <button
+                onClick={() => setShowMobileMoreMenu(false)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <button
+                onClick={() => {
+                  setShowMobileMoreMenu(false);
+                  setShowDrawer(true);
+                }}
+                className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 flex items-center gap-2.5 font-semibold text-zinc-800 dark:text-zinc-200 active:scale-98"
+              >
+                <List className="w-4 h-4 text-amber-600 shrink-0" />
+                <span className="truncate">Chapters ({story.chapters.length})</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowMobileMoreMenu(false);
+                  setShowCommentsDrawer(true);
+                }}
+                className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 flex items-center gap-2.5 font-semibold text-zinc-800 dark:text-zinc-200 active:scale-98"
+              >
+                <MessageSquare className="w-4 h-4 text-amber-600 shrink-0" />
+                <span className="truncate">Discussion ({comments.length})</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowMobileMoreMenu(false);
+                  setShowShareModal(true);
+                }}
+                className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 flex items-center gap-2.5 font-semibold text-zinc-800 dark:text-zinc-200 active:scale-98"
+              >
+                <Share2 className="w-4 h-4 text-blue-500 shrink-0" />
+                <span className="truncate">Share Story</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowMobileMoreMenu(false);
+                  setShowCollectionsModal(true);
+                }}
+                className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 flex items-center gap-2.5 font-semibold text-zinc-800 dark:text-zinc-200 active:scale-98"
+              >
+                <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                <span className="truncate">Add Collection</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  handleToggleOffline();
+                  setShowMobileMoreMenu(false);
+                }}
+                className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 flex items-center gap-2.5 font-semibold text-zinc-800 dark:text-zinc-200 active:scale-98"
+              >
+                <Download className={`w-4 h-4 shrink-0 ${isSavedOffline ? 'text-emerald-500' : 'text-zinc-400'}`} />
+                <span className="truncate">{isSavedOffline ? 'Downloaded' : 'Save Offline'}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowMobileMoreMenu(false);
+                  setShowReportModal(true);
+                }}
+                className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 flex items-center gap-2.5 font-semibold text-red-600 dark:text-red-400 active:scale-98"
+              >
+                <Flag className="w-4 h-4 text-red-500 shrink-0" />
+                <span className="truncate">Report Story</span>
+              </button>
             </div>
           </div>
-
-          {/* Font Size */}
-          <div>
-            <label className="text-[11px] font-semibold text-zinc-500 uppercase block mb-1.5">
-              Font Scale
-            </label>
-            <div className="grid grid-cols-5 gap-1">
-              {(['sm', 'base', 'lg', 'xl', '2xl'] as ReaderFontSize[]).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setReaderSettings({ ...readerSettings, fontSize: s })}
-                  className={`py-1 rounded-lg border text-xs font-bold uppercase transition-all cursor-pointer ${
-                    readerSettings.fontSize === s
-                      ? 'bg-amber-600 border-amber-600 text-white'
-                      : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        </>
       )}
 
       {/* Table of Contents Drawer */}
@@ -945,7 +1074,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
             className="fixed inset-0 bg-black/60 backdrop-blur-xs"
             onClick={() => setShowDrawer(false)}
           />
-          <div className="relative w-80 max-w-[80vw] bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col h-full z-10 shadow-2xl animate-fadeIn">
+          <div className="relative w-80 max-w-[85vw] bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col h-full z-10 shadow-2xl pt-safe pb-safe animate-fadeIn">
             <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
               <div>
                 <span className="text-[10px] uppercase font-bold text-amber-600 tracking-wider">
@@ -957,13 +1086,13 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
               </div>
               <button
                 onClick={() => setShowDrawer(false)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 space-y-1">
+            <div className="flex-1 overflow-y-auto p-3 space-y-1 touch-scroll">
               {story.chapters.map((ch, idx) => {
                 const isCurrent = idx === currentChapterIndex;
                 return (
@@ -975,7 +1104,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                       setShowDrawer(false);
                       contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className={`w-full p-3 rounded-xl text-left text-xs transition-all flex items-center justify-between cursor-pointer ${
+                    className={`w-full p-3 rounded-xl text-left text-xs transition-all flex items-center justify-between cursor-pointer min-h-[44px] ${
                       isCurrent
                         ? 'bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300 font-bold'
                         : 'hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300'
@@ -1005,7 +1134,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
             className="fixed inset-0 bg-black/60 backdrop-blur-xs"
             onClick={() => setShowCommentsDrawer(false)}
           />
-          <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 flex flex-col h-full z-10 shadow-2xl animate-fadeIn">
+          <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 flex flex-col h-full z-10 shadow-2xl pt-safe pb-safe animate-fadeIn">
             <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 text-amber-500" />
@@ -1015,7 +1144,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
               </div>
               <button
                 onClick={() => setShowCommentsDrawer(false)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1028,7 +1157,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
                 onChange={(e) => setNewCommentText(e.target.value)}
                 placeholder="Share your thoughts on this chapter..."
                 rows={2}
-                className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
               <div className="flex justify-end">
                 <button

@@ -243,7 +243,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col">
       {/* Top Admin Control Bar */}
-      <div className="sticky top-0 z-30 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div className="sticky top-14 sm:top-16 z-30 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsMobileSidebarOpen(true)}
@@ -384,6 +384,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onToggleStatus={handleToggleUserStatus}
               onGrantStoryAccess={handleGrantStoryAccess}
               onRevokeStoryAccess={handleRevokeStoryAccess}
+              onAddUser={handleAddAdmin}
             />
           )}
 

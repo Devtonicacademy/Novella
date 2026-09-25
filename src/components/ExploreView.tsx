@@ -98,62 +98,64 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by title, author, keyword, or character..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-base sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
             />
           </div>
 
-          {/* Pricing Quick Filter */}
-          <div className="flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 self-start sm:self-auto">
+          {/* Pricing Quick Filter & Interactive Toggle Container */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 touch-scroll scrollbar-none">
+            <div className="flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shrink-0">
+              <button
+                onClick={() => setPricingFilter('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer min-h-[36px] ${
+                  pricingFilter === 'all'
+                    ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setPricingFilter('free')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer min-h-[36px] ${
+                  pricingFilter === 'free'
+                    ? 'bg-amber-500 text-white shadow-xs'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+                }`}
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>Free Books</span>
+              </button>
+              <button
+                onClick={() => setPricingFilter('premium')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer min-h-[36px] ${
+                  pricingFilter === 'premium'
+                    ? 'bg-zinc-800 text-zinc-100 shadow-xs'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+                }`}
+              >
+                <Lock className="w-3 h-3" />
+                <span>Premium</span>
+              </button>
+            </div>
+
+            {/* Interactive Toggle */}
             <button
-              onClick={() => setPricingFilter('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                pricingFilter === 'all'
-                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs'
-                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+              onClick={() => setInteractiveOnly(!interactiveOnly)}
+              className={`px-3.5 py-2 rounded-2xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 min-h-[40px] ${
+                interactiveOnly
+                  ? 'bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500'
+                  : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 bg-white dark:bg-zinc-900'
               }`}
             >
-              All
-            </button>
-            <button
-              onClick={() => setPricingFilter('free')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                pricingFilter === 'free'
-                  ? 'bg-amber-500 text-white shadow-xs'
-                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
-              }`}
-            >
-              <Sparkles className="w-3 h-3" />
-              <span>Free Books</span>
-            </button>
-            <button
-              onClick={() => setPricingFilter('premium')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                pricingFilter === 'premium'
-                  ? 'bg-zinc-800 text-zinc-100 shadow-xs'
-                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
-              }`}
-            >
-              <Lock className="w-3 h-3" />
-              <span>Premium</span>
+              <GitBranch className="w-3.5 h-3.5" />
+              <span>Interactive</span>
             </button>
           </div>
-
-          {/* Interactive Toggle */}
-          <button
-            onClick={() => setInteractiveOnly(!interactiveOnly)}
-            className={`px-3.5 py-2 rounded-2xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer self-start sm:self-auto ${
-              interactiveOnly
-                ? 'bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500'
-                : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300'
-            }`}
-          >
-            <GitBranch className="w-3.5 h-3.5" />
-            <span>Interactive Choices</span>
-          </button>
         </div>
 
         {/* Categories Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none touch-scroll">
           {ALL_CATEGORIES.map((cat) => (
             <button
               key={cat}

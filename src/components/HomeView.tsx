@@ -61,55 +61,57 @@ export const HomeView: React.FC<HomeViewProps> = ({
   return (
     <div className="space-y-12 pb-20 animate-fadeIn">
       {/* Editorial Storytelling Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-transparent border-b border-zinc-200/60 dark:border-zinc-800/60 py-10 sm:py-16">
+      <section className="relative overflow-hidden bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-transparent border-b border-zinc-200/60 dark:border-zinc-800/60 py-6 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-14">
-            <div className="flex-1 text-center lg:text-left space-y-5">
+          <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-14">
+            <div className="flex-1 text-center lg:text-left space-y-4 sm:space-y-5">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
                 <Sparkles className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
                 <span>African & Contemporary Literature Platform</span>
               </div>
 
-              <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight leading-tight">
+              <h1 className="font-serif text-2xl sm:text-4xl lg:text-5xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight leading-tight">
                 Immerse in captivating stories, audiobooks, and interactive sagas.
               </h1>
 
-              <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-300 max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif">
+              <p className="text-xs sm:text-base text-zinc-600 dark:text-zinc-300 max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif">
                 Discover moral folktales, school adventures, mystery epics, and music memoirs. Read the first <strong>2 books 100% free</strong>, listen with natural Read-Aloud audio, or create your own with AI Story Studio.
               </p>
 
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-center lg:justify-start gap-2.5 sm:gap-3 pt-2">
                 {featuredStory && (
                   <button
                     id="hero-read-first-free-story-btn"
                     onClick={() => onReadStory(featuredStory)}
-                    className="px-5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-amber-500/25 transition-all cursor-pointer"
+                    className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 transition-all cursor-pointer min-h-[44px]"
                   >
                     <BookOpen className="w-4 h-4" />
                     <span>Start Reading Free Story #1</span>
                   </button>
                 )}
 
-                <button
-                  id="hero-open-ai-studio-btn"
-                  onClick={onOpenAIStudio}
-                  className="px-5 py-3 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 hover:border-amber-500 text-zinc-800 dark:text-zinc-200 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer shadow-sm"
-                >
-                  <Sparkles className="w-4 h-4 text-amber-500" />
-                  <span>AI Story Studio</span>
-                </button>
+                <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:items-center sm:gap-3">
+                  <button
+                    id="hero-open-ai-studio-btn"
+                    onClick={onOpenAIStudio}
+                    className="px-4 py-3 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 hover:border-amber-500 text-zinc-800 dark:text-zinc-200 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs min-h-[44px]"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span>AI Studio</span>
+                  </button>
 
-                <button
-                  onClick={() => onNavigate('explore')}
-                  className="px-4 py-3 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 font-semibold text-xs sm:text-sm flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Compass className="w-4 h-4" />
-                  <span>Explore All Genres</span>
-                </button>
+                  <button
+                    onClick={() => onNavigate('explore')}
+                    className="px-4 py-3 rounded-2xl sm:rounded-none bg-zinc-100 dark:bg-zinc-800 sm:bg-transparent text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
+                  >
+                    <Compass className="w-4 h-4" />
+                    <span>Explore All</span>
+                  </button>
+                </div>
               </div>
 
               {/* Trust markers */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-5 pt-3 text-[11px] text-zinc-500 dark:text-zinc-400">
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2 text-[11px] text-zinc-500 dark:text-zinc-400">
                 <div className="flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-600" />
                   <span>2 Free Guaranteed Books</span>
@@ -129,18 +131,31 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {featuredStory && (
               <div
                 onClick={() => onSelectStory(featuredStory)}
-                className="lg:w-80 shrink-0 cursor-pointer group flex flex-col items-center"
+                className="lg:w-80 shrink-0 cursor-pointer group flex flex-col items-center pt-2 sm:pt-0"
               >
                 <div className="transform transition-transform duration-300 group-hover:-translate-y-2 group-hover:rotate-1">
-                  <BookCover
-                    title={featuredStory.title}
-                    author={featuredStory.author}
-                    category={featuredStory.category}
-                    coverColorTheme={featuredStory.coverColorTheme}
-                    coverImage={featuredStory.coverImage}
-                    size="lg"
-                    isUnlocked={true}
-                  />
+                  <div className="sm:hidden">
+                    <BookCover
+                      title={featuredStory.title}
+                      author={featuredStory.author}
+                      category={featuredStory.category}
+                      coverColorTheme={featuredStory.coverColorTheme}
+                      coverImage={featuredStory.coverImage}
+                      size="md"
+                      isUnlocked={true}
+                    />
+                  </div>
+                  <div className="hidden sm:block">
+                    <BookCover
+                      title={featuredStory.title}
+                      author={featuredStory.author}
+                      category={featuredStory.category}
+                      coverColorTheme={featuredStory.coverColorTheme}
+                      coverImage={featuredStory.coverImage}
+                      size="lg"
+                      isUnlocked={true}
+                    />
+                  </div>
                 </div>
                 <div className="text-center mt-3">
                   <span className="text-[10px] uppercase tracking-widest text-amber-600 dark:text-amber-400 font-bold">

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="amberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#amberGrad)" />
+  <path d="M7 10.5C8.8 9.5 11.2 9.5 13 10.5L13 22.5C11.2 21.5 8.8 21.5 7 22.5 Z M25 10.5C23.2 9.5 20.8 9.5 19 10.5L19 22.5C20.8 21.5 23.2 21.5 25 22.5 Z" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  <line x1="16" y1="10" x2="16" y2="23" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+</svg>

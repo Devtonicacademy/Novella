@@ -26,7 +26,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
 
   if (layout === 'horizontal') {
     return (
-      <div className="group relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:gap-6 shadow-xs hover:shadow-lg transition-all duration-300 hover:border-amber-600/40">
+      <div className="group relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 sm:p-5 flex flex-row gap-3.5 sm:gap-6 shadow-xs hover:shadow-lg transition-all duration-300 hover:border-amber-600/40 items-start">
         <div
           onClick={() => onSelectStory(story)}
           className="shrink-0 flex justify-center cursor-pointer transition-transform duration-300 group-hover:-translate-y-1"
@@ -34,14 +34,14 @@ export const StoryCard: React.FC<StoryCardProps> = ({
           <BookCover story={story} size="sm" isUnlocked={isUnlocked} />
         </div>
 
-        <div className="flex-1 min-w-0 flex flex-col justify-between space-y-3">
+        <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch space-y-2 sm:space-y-3">
           <div>
-            <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 mb-1 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-zinc-500 dark:text-zinc-400 mb-1 flex-wrap">
               <span className="font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider text-[10px]">
                 {story.category}
               </span>
               <span aria-hidden="true">·</span>
-              <span>{story.readTime}</span>
+              <span className="text-[11px]">{story.readTime}</span>
               <span aria-hidden="true">·</span>
               <StarRatingDisplay
                 rating={story.rating}
@@ -54,11 +54,11 @@ export const StoryCard: React.FC<StoryCardProps> = ({
 
             <h3
               onClick={() => onSelectStory(story)}
-              className="font-display text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors cursor-pointer line-clamp-1"
+              className="font-display text-sm sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors cursor-pointer line-clamp-1"
             >
               {story.title}
             </h3>
-            <p className="text-xs text-zinc-600 dark:text-zinc-300 line-clamp-2 mt-1 font-reading">
+            <p className="text-xs text-zinc-600 dark:text-zinc-300 line-clamp-2 mt-0.5 sm:mt-1 font-reading">
               {story.description}
             </p>
           </div>
@@ -66,7 +66,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
           <div className="flex items-center justify-between pt-2 border-t border-zinc-100 dark:border-zinc-800">
             <div>
               {story.isFree ? (
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-md border border-amber-200 dark:border-amber-900/50">
+                <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-amber-200 dark:border-amber-900/50">
                   <Sparkles className="w-3 h-3 text-amber-600" />
                   Free Book
                 </span>
@@ -75,11 +75,11 @@ export const StoryCard: React.FC<StoryCardProps> = ({
                   Unlocked in Library
                 </span>
               ) : (
-                <div className="flex items-baseline gap-1.5">
+                <div className="flex items-baseline gap-1 sm:gap-1.5">
                   <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
-                    ₦{story.priceNGN.toLocaleString()} NGN
+                    ₦{story.priceNGN.toLocaleString()}
                   </span>
-                  <span className="text-[10px] text-zinc-400 tabular-nums">
+                  <span className="text-[10px] text-zinc-400 tabular-nums hidden sm:inline">
                     (${story.priceUSD.toFixed(2)})
                   </span>
                 </div>
@@ -89,7 +89,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
             {isUnlocked ? (
               <button
                 onClick={() => onReadStory(story)}
-                className="px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer min-h-[40px]"
               >
                 <BookOpen className="w-3.5 h-3.5" />
                 <span>{progress ? 'Continue' : 'Read'}</span>
@@ -97,7 +97,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
             ) : (
               <button
                 onClick={() => onUnlockStory(story)}
-                className="px-3.5 py-1.5 bg-zinc-900 hover:bg-black dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                className="px-4 py-2 bg-zinc-900 hover:bg-black dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer min-h-[40px]"
               >
                 <Lock className="w-3.5 h-3.5" />
                 <span>Unlock</span>
@@ -175,7 +175,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
         {isUnlocked ? (
           <button
             onClick={() => onReadStory(story)}
-            className="px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+            className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer min-h-[40px]"
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Read</span>
@@ -183,7 +183,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
         ) : (
           <button
             onClick={() => onUnlockStory(story)}
-            className="px-3 py-1.5 bg-zinc-900 hover:bg-black dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+            className="px-4 py-2 bg-zinc-900 hover:bg-black dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer min-h-[40px]"
           >
             <Lock className="w-3.5 h-3.5" />
             <span>Unlock</span>

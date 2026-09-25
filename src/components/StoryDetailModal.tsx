@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Story, Review } from '../types';
+import { Story, Review, StoryCategory } from '../types';
+import { INITIAL_CATEGORIES } from '../data/adminMockData';
 import { BookCover } from './BookCover';
 import { StarRatingDisplay } from './StarRatingDisplay';
 import { RateStoryModal } from './RateStoryModal';
@@ -7,7 +8,7 @@ import { ShareStoryModal } from './ShareStoryModal';
 import { CollectionsModal } from './CollectionsModal';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { X, BookOpen, Lock, Sparkles, Star, Check, MessageSquare, ThumbsUp, Plus, Share2, Heart, FolderPlus } from 'lucide-react';
+import { X, BookOpen, Lock, Sparkles, Star, Check, MessageSquare, ThumbsUp, Plus, Share2, Heart, FolderPlus, Edit3, RefreshCw, AlertCircle } from 'lucide-react';
 
 interface StoryDetailModalProps {
   story: Story | null;
@@ -26,7 +27,7 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
   onUnlockStory,
   onStoryUpdated,
 }) => {
-  const { isStoryUnlocked, isAuthenticated, openAuthModal, toggleLikeStory, isStoryLiked } = useAuth();
+  const { isStoryUnlocked, isAuthenticated, openAuthModal, toggleLikeStory, isStoryLiked, isAdmin, user } = useAuth();
   const [story, setStory] = useState<Story | null>(initialStory);
   const [isRateModalOpen, setIsRateModalOpen] = useState<boolean>(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
@@ -36,8 +37,86 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
   const [reviewsList, setReviewsList] = useState<Review[]>([]);
   const [activeTab, setActiveTab] = useState<'details' | 'reviews'>('details');
 
+  // Admin / Author Book Edit State
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editForm, setEditForm] = useState<Partial<Story>>({});
+  const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const canEdit = Boolean(isAdmin || (user && story && (user.id === story.authorId || user.email === story.authorEmail)));
+
+  const handleStartEdit = () => {
+    if (!story) return;
+    setEditForm({
+      title: story.title,
+      subtitle: story.subtitle || '',
+      author: story.author,
+      category: story.category,
+      priceNGN: story.priceNGN,
+      priceUSD: story.priceUSD,
+      isFree: story.isFree,
+      description: story.description,
+      synopsis: story.synopsis || story.description,
+      status: story.status || 'published',
+      coverImage: story.coverImage || '',
+    });
+    setEditError(null);
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!story) return;
+    if (!editForm.title?.trim()) {
+      setEditError('Story title is required.');
+      return;
+    }
+    if (!editForm.author?.trim()) {
+      setEditError('Author name is required.');
+      return;
+    }
+
+    setIsSavingEdit(true);
+    setEditError(null);
+    try {
+      const updated = await api.updateStory(story.id, editForm);
+      setStory(updated);
+      if (onStoryUpdated) {
+        onStoryUpdated(updated);
+      }
+      setIsEditing(false);
+    } catch (err: any) {
+      console.error('Failed to update story:', err);
+      setEditError(err.message || 'Failed to update book details.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditError(null);
+    if (story) {
+      setEditForm({
+        title: story.title,
+        subtitle: story.subtitle || '',
+        author: story.author,
+        category: story.category,
+        priceNGN: story.priceNGN,
+        priceUSD: story.priceUSD,
+        isFree: story.isFree,
+        description: story.description,
+        synopsis: story.synopsis || story.description,
+        status: story.status || 'published',
+        coverImage: story.coverImage || '',
+      });
+    }
+  };
+
   useEffect(() => {
     setStory(initialStory);
+    setIsEditing(false);
+    setEditError(null);
     if (initialStory && isOpen) {
       // Fetch detailed rating info and reviews
       api.getStoryRatingInfo(initialStory.id).then((info) => {
@@ -119,14 +198,17 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
     <>
       <div
         id="story-detail-modal-backdrop"
-        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200"
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200"
       >
         <div
           id="story-detail-modal-card"
-          className="w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[92vh]"
+          className="w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-3xl shadow-2xl border-t sm:border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[90vh]"
         >
+          {/* Mobile Drag Indicator */}
+          <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto mt-2.5 mb-0.5 sm:hidden" />
+
           {/* Header */}
-          <div className="px-5 py-3.5 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+          <div className="px-5 py-3 sm:py-3.5 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
               <span className="uppercase tracking-wider font-bold text-amber-700 dark:text-amber-400">
                 {story.category}
@@ -136,18 +218,241 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
               <span aria-hidden="true">·</span>
               <span>{story.readTime}</span>
             </div>
-            <button
-              id="close-story-detail-btn"
-              onClick={onClose}
-              className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              {canEdit && !isEditing && (
+                <button
+                  type="button"
+                  id="story-detail-edit-header-btn"
+                  onClick={handleStartEdit}
+                  className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                  title="Edit Book Details"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Edit Book</span>
+                </button>
+              )}
+              <button
+                id="close-story-detail-btn"
+                onClick={onClose}
+                className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Scrollable Content */}
           <div className="p-5 sm:p-6 overflow-y-auto space-y-6">
-            {/* Story Hero Header */}
+            {isEditing ? (
+              <form onSubmit={handleSaveEdit} className="space-y-4 text-xs animate-fadeIn">
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                  <div>
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                      <Edit3 className="w-4 h-4 text-purple-600" />
+                      <span>Edit Book Details</span>
+                    </h3>
+                    <p className="text-[11px] text-zinc-500">Update story title, blurb, pricing, and catalog presentation</p>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                    {isAdmin ? 'Admin Edit' : 'Author Edit'}
+                  </span>
+                </div>
+
+                {editError && (
+                  <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-400 flex items-center gap-2.5">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                    <span className="font-medium">{editError}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold block mb-1">Story Title *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.title || ''}
+                      onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold block mb-1">Subtitle / Tagline</label>
+                    <input
+                      type="text"
+                      value={editForm.subtitle || ''}
+                      onChange={(e) => setEditForm({ ...editForm, subtitle: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold block mb-1">Author Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.author || ''}
+                      onChange={(e) => setEditForm({ ...editForm, author: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold block mb-1">Category / Genre *</label>
+                    <select
+                      value={editForm.category || 'Folklore'}
+                      onChange={(e) => setEditForm({ ...editForm, category: e.target.value as StoryCategory })}
+                      className="w-full p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 cursor-pointer"
+                    >
+                      {INITIAL_CATEGORIES.map((c) => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Pricing section */}
+                {story.order <= 2 ? (
+                  <div className="p-3.5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex items-center gap-2.5">
+                    <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span className="text-xs text-amber-800 dark:text-amber-300">
+                      <strong>Vol #{story.order} Protected Rule:</strong> Introductory books are permanently configured as free stories.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700">
+                    <div>
+                      <label className="font-semibold block mb-1">Price in NGN (₦)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        disabled={editForm.isFree}
+                        value={editForm.isFree ? 0 : (editForm.priceNGN ?? 2000)}
+                        onChange={(e) => {
+                          const val = Math.max(0, Number(e.target.value));
+                          setEditForm({
+                            ...editForm,
+                            priceNGN: val,
+                            priceUSD: Number((val / 1450).toFixed(2))
+                          });
+                        }}
+                        className="w-full p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 font-mono disabled:opacity-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold block mb-1">Price in USD ($)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        disabled={editForm.isFree}
+                        value={editForm.isFree ? 0 : (editForm.priceUSD ?? 2.80)}
+                        onChange={(e) => setEditForm({ ...editForm, priceUSD: Math.max(0, Number(e.target.value)) })}
+                        className="w-full p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 font-mono disabled:opacity-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold block mb-1">Status</label>
+                      <select
+                        value={editForm.status || 'published'}
+                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value as any })}
+                        className="w-full p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900"
+                      >
+                        <option value="published">Published</option>
+                        <option value="draft">Draft</option>
+                        <option value="archived">Archived</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="font-semibold block mb-1">Description / Blurb</label>
+                  <textarea
+                    rows={3}
+                    value={editForm.description || ''}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold block mb-1">Synopsis / Story Themes</label>
+                  <textarea
+                    rows={2}
+                    value={editForm.synopsis || ''}
+                    onChange={(e) => setEditForm({ ...editForm, synopsis: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold block mb-1">Cover Image URL (Optional)</label>
+                  <input
+                    type="url"
+                    placeholder="https://images.unsplash.com/..."
+                    value={editForm.coverImage || ''}
+                    onChange={(e) => setEditForm({ ...editForm, coverImage: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+                  />
+                </div>
+
+                {story.order > 2 && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id="editIsFree"
+                      checked={editForm.isFree || false}
+                      onChange={(e) => {
+                        const isFree = e.target.checked;
+                        setEditForm({
+                          ...editForm,
+                          isFree,
+                          ...(isFree
+                            ? { priceNGN: 0, priceUSD: 0 }
+                            : { priceNGN: editForm.priceNGN || 2000, priceUSD: editForm.priceUSD || 2.80 })
+                        });
+                      }}
+                      className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    />
+                    <label htmlFor="editIsFree" className="font-medium cursor-pointer">
+                      Make this book completely free for all readers (Override paywall)
+                    </label>
+                  </div>
+                )}
+
+                {/* Form Action Buttons */}
+                <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className="px-4 py-2 rounded-xl text-zinc-600 dark:text-zinc-400 font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingEdit}
+                    className="px-5 py-2 bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer text-xs"
+                  >
+                    {isSavingEdit ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Save Changes</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                {/* Story Hero Header */}
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
               <BookCover story={story} size="md" isUnlocked={isUnlocked} />
 
@@ -421,42 +726,78 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
                 )}
               </div>
             )}
-          </div>
+          </>
+        )}
+      </div>
 
           {/* Modal Action Footer */}
-          <div className="p-4 sm:p-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/90 flex items-center justify-between gap-3">
-            <button
-              id="story-detail-close-btn"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            >
-              Close
-            </button>
-
-            {isUnlocked ? (
-              <button
-                id="story-detail-read-btn"
-                onClick={() => {
-                  onClose();
-                  onReadStory(story);
-                }}
-                className="px-6 py-2.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
-              >
-                <BookOpen className="w-4 h-4" />
-                <span>Read Story</span>
-              </button>
+          <div className="p-4 sm:p-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/95 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2.5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-5">
+            {isEditing ? (
+              <>
+                <button
+                  type="button"
+                  id="story-detail-cancel-edit-btn"
+                  onClick={handleCancelEdit}
+                  className="w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer min-h-[44px]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  id="story-detail-save-edit-btn"
+                  onClick={() => handleSaveEdit()}
+                  disabled={isSavingEdit}
+                  className="w-full sm:w-auto px-6 py-3.5 sm:py-2.5 bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer min-h-[46px]"
+                >
+                  {isSavingEdit ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Saving Changes...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </>
             ) : (
-              <button
-                id="story-detail-unlock-btn"
-                onClick={() => {
-                  onClose();
-                  onUnlockStory(story);
-                }}
-                className="px-6 py-2.5 bg-zinc-900 hover:bg-black dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
-              >
-                <Lock className="w-4 h-4" />
-                <span>Unlock Story · ₦{story.priceNGN.toLocaleString()}</span>
-              </button>
+              <>
+                <button
+                  id="story-detail-close-btn"
+                  onClick={onClose}
+                  className="w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer min-h-[44px]"
+                >
+                  Close
+                </button>
+
+                {isUnlocked ? (
+                  <button
+                    id="story-detail-read-btn"
+                    onClick={() => {
+                      onClose();
+                      onReadStory(story);
+                    }}
+                    className="w-full sm:w-auto px-6 py-3.5 sm:py-2.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer min-h-[46px]"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Read Story</span>
+                  </button>
+                ) : (
+                  <button
+                    id="story-detail-unlock-btn"
+                    onClick={() => {
+                      onClose();
+                      onUnlockStory(story);
+                    }}
+                    className="w-full sm:w-auto px-6 py-3.5 sm:py-2.5 bg-zinc-900 hover:bg-black dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer min-h-[46px]"
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>Unlock Story · ₦{story.priceNGN.toLocaleString()}</span>
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>

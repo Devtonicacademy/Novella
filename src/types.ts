@@ -49,6 +49,7 @@ export interface Story {
   subtitle?: string;
   author: string;
   authorId?: string;
+  authorEmail?: string;
   authorBio?: string;
   authorAvatar?: string;
   category: StoryCategory;

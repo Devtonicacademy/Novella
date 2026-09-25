@@ -171,40 +171,45 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-        {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-xs ${
-              mode === 'admin' ? 'bg-purple-700' : 'bg-gradient-to-br from-amber-600 to-amber-800'
-            }`}>
-              {mode === 'admin' ? <Shield className="w-4 h-4" /> : <BookOpen className="w-4 h-4" />}
-            </div>
-            <div>
-              <span className="font-display font-bold text-sm text-zinc-900 dark:text-zinc-100 block leading-tight">
-                {mode === 'admin' ? 'Novella Staff Portal' : 'Novella Storytelling'}
-              </span>
-              <span className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                {mode === 'admin' 
-                  ? 'Authorized Admin Verification' 
-                  : mode === 'signup' 
-                  ? 'Join & Read 2 Books Free' 
-                  : mode === 'forgot' || mode === 'reset'
-                  ? 'Account Recovery'
-                  : 'Welcome Back Reader'}
-              </span>
-            </div>
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
+        <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden max-h-[92dvh] sm:max-h-[90vh] flex flex-col pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
+          {/* Mobile drag handle */}
+          <div className="sm:hidden pt-2.5 pb-1 flex justify-center shrink-0">
+            <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full" />
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
 
-        <div className="p-6 space-y-5">
+          {/* Header */}
+          <div className="p-4 sm:p-5 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-xs ${
+                mode === 'admin' ? 'bg-purple-700' : 'bg-gradient-to-br from-amber-600 to-amber-800'
+              }`}>
+                {mode === 'admin' ? <Shield className="w-4 h-4" /> : <BookOpen className="w-4 h-4" />}
+              </div>
+              <div>
+                <span className="font-display font-bold text-sm text-zinc-900 dark:text-zinc-100 block leading-tight">
+                  {mode === 'admin' ? 'Novella Staff Portal' : 'Novella Storytelling'}
+                </span>
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                  {mode === 'admin' 
+                    ? 'Authorized Admin Verification' 
+                    : mode === 'signup' 
+                    ? 'Join & Read 2 Books Free' 
+                    : mode === 'forgot' || mode === 'reset'
+                    ? 'Account Recovery'
+                    : 'Welcome Back Reader'}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="p-5 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto touch-scroll flex-1">
           {/* Top Mode Selector Tabs */}
           {mode !== 'forgot' && mode !== 'reset' && (
             <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800/80 rounded-2xl">
@@ -314,7 +319,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="e.g. Chimamanda Adichie"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-base sm:text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                   />
                 </div>
               </div>
@@ -333,7 +338,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={mode === 'admin' ? 'admin@novella.app' : 'reader@example.com'}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-base sm:text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                 />
               </div>
             </div>
@@ -352,7 +357,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     value={resetToken}
                     onChange={(e) => setResetToken(e.target.value)}
                     placeholder="Enter 6-digit code"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-600/30 font-mono tracking-widest uppercase"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-base sm:text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-600/30 font-mono tracking-widest uppercase"
                   />
                 </div>
               </div>
@@ -383,7 +388,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+                    className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-base sm:text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                   />
                   <button
                     type="button"
@@ -410,7 +415,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-base sm:text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
                   />
                 </div>
               </div>
@@ -429,7 +434,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-3 px-4 rounded-xl text-xs font-bold text-white shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 ${
+              className={`w-full py-3.5 px-4 rounded-xl text-xs font-bold text-white shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 min-h-[46px] ${
                 mode === 'admin'
                   ? 'bg-purple-700 hover:bg-purple-800'
                   : 'bg-amber-700 hover:bg-amber-800'

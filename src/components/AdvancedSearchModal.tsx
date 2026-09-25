@@ -73,10 +73,15 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-fadeIn">
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] my-auto">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[90vh] my-0 sm:my-auto pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
+        {/* Mobile drag handle */}
+        <div className="sm:hidden pt-2.5 pb-1 flex justify-center shrink-0">
+          <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full" />
+        </div>
+
         {/* Search Bar Header */}
-        <div className="p-4 sm:p-6 border-b border-zinc-100 dark:border-zinc-800 space-y-4">
+        <div className="p-4 sm:p-6 border-b border-zinc-100 dark:border-zinc-800 space-y-3.5 sm:space-y-4 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Search className="w-5 h-5 text-amber-500" />
@@ -86,7 +91,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-full"
+              className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-full cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -99,7 +104,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by title, author, themes, or keywords..."
-              className="w-full pl-11 pr-4 py-3 text-sm rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
+              className="w-full pl-11 pr-4 py-3 text-base sm:text-sm rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
             />
             <Search className="w-5 h-5 text-zinc-400 absolute left-3.5 top-3.5" />
             {query && (
@@ -113,12 +118,12 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
           </div>
 
           {/* Categories Horizontal Scroll */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none touch-scroll">
             {ALL_CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                   selectedCategory === cat
                     ? 'bg-amber-500 text-white shadow-sm'
                     : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
@@ -172,7 +177,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
         </div>
 
         {/* Results List */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-3 flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto touch-scroll space-y-3 flex-1">
           <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 pb-1">
             {filteredStories.length} Storie{filteredStories.length === 1 ? 'y' : 's'} found
           </div>

@@ -73,22 +73,22 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   }, [showThemeMenu]);
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-zinc-200/80 dark:border-zinc-800/80 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+    <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-zinc-200/80 dark:border-zinc-800/80 transition-colors pt-safe">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-2">
         {/* Zone 1: Wordmark & Literary Identity */}
         <div
           id="brand-logo-btn"
           onClick={() => onNavigate('home')}
-          className="flex items-center gap-2.5 cursor-pointer group select-none shrink-0"
+          className="flex items-center gap-2 cursor-pointer group select-none shrink-0"
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
-            <BookOpen className="w-5 h-5 stroke-[2.2]" />
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
+            <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
           </div>
           <div>
-            <span className="font-serif font-extrabold text-lg sm:text-xl tracking-tight text-zinc-900 dark:text-zinc-50 block leading-none">
+            <span className="font-serif font-extrabold text-base sm:text-xl tracking-tight text-zinc-900 dark:text-zinc-50 block leading-none">
               Novella
             </span>
-            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium tracking-wide uppercase">
+            <span className="text-[9px] sm:text-[10px] text-amber-600 dark:text-amber-400 font-medium tracking-wide uppercase">
               Storytelling
             </span>
           </div>
@@ -164,13 +164,13 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         </nav>
 
         {/* Zone 3: Action Buttons (Search, AI Studio, Notifications, Offline, Theme, User) */}
-        <div className="flex items-center gap-1 sm:gap-2">
-          {/* Reading Streak Pill */}
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          {/* Reading Streak Pill (Desktop) */}
           {user && (
             <button
               id="top-streak-btn"
               onClick={onOpenProfileModal || (() => onNavigate('profile'))}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 hover:from-amber-500/20 hover:to-orange-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/20 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 hover:from-amber-500/20 hover:to-orange-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/20 text-xs font-bold transition-all cursor-pointer shadow-2xs"
               title={`${currentStreak} Day Reading Streak · Click to view reading goals`}
             >
               <Flame className={`w-3.5 h-3.5 ${currentStreak > 0 ? 'text-orange-500 fill-orange-500 animate-pulse' : 'text-zinc-400'}`} />
@@ -178,12 +178,12 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             </button>
           )}
 
-          {/* Activity Feed Button */}
+          {/* Activity Feed Button (Desktop) */}
           {onOpenActivityFeed && (
             <button
               id="top-activity-feed-btn"
               onClick={onOpenActivityFeed}
-              className="p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="hidden sm:flex p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
               title="Community Activity Feed"
             >
               <Activity className="w-4 h-4" />
@@ -194,17 +194,17 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           <button
             id="top-search-btn"
             onClick={onOpenSearch}
-            className="p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
             title="Advanced Search"
           >
-            <Search className="w-4 h-4" />
+            <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
           </button>
 
           {/* AI Story Studio Action Button */}
           <button
             id="top-ai-studio-btn"
             onClick={onOpenAIStudio}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer shadow-xs"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer shadow-xs"
             title="Generate Story with AI"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-600" />
@@ -215,20 +215,20 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           <button
             id="top-notifications-btn"
             onClick={onOpenNotifications}
-            className="p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors relative cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors relative cursor-pointer"
             title="Notifications"
           >
-            <Bell className="w-4 h-4" />
+            <Bell className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
             {unreadNotificationsCount > 0 && (
               <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500 animate-ping" />
             )}
           </button>
 
-          {/* Offline Library Modal Trigger */}
+          {/* Offline Library Modal Trigger (Desktop) */}
           <button
             id="top-offline-modal-btn"
             onClick={onOpenOfflineModal}
-            className="p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="hidden sm:flex p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
             title="Offline Downloads"
           >
             <Download className="w-4 h-4" />
@@ -238,7 +238,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           <div className="relative" ref={themeMenuRef}>
             <button
               onClick={() => setShowThemeMenu(!showThemeMenu)}
-              className="flex items-center gap-1 p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="flex items-center gap-0.5 sm:gap-1 p-1.5 sm:p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
               title="Theme and Color Settings"
               aria-label="Theme Settings"
             >
@@ -247,12 +247,12 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
               ) : (
                 <Sun className="w-4 h-4 text-amber-600" />
               )}
-              <ChevronDown className="w-3 h-3 text-zinc-400" />
+              <ChevronDown className="w-3 h-3 text-zinc-400 hidden sm:inline" />
             </button>
 
             {/* Dropdown Menu */}
             {showThemeMenu && (
-              <div className="absolute right-0 mt-2 w-72 p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 z-50 animate-fadeIn space-y-3">
+              <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-1.5rem)] p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 z-50 animate-fadeIn space-y-3">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-1.5">
                     Appearance Mode
@@ -361,7 +361,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
 
               <button
                 onClick={signOut}
-                className="p-2 rounded-xl text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+                className="hidden sm:flex p-2 rounded-xl text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
                 title="Sign Out"
               >
                 <LogOut className="w-4 h-4" />

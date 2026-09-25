@@ -124,6 +124,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const getRoleLabel = (role: AdminRole) => {
     switch (role) {
       case 'super_admin': return 'Super Admin (Full Access)';
+      case 'admin': return 'Administrator (Full Access)';
       case 'content_admin': return 'Content Admin (Editorial)';
       case 'support_admin': return 'Support Admin (Users & Access)';
       case 'finance_admin': return 'Finance Admin (Settlements)';
@@ -134,6 +135,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const getRoleColor = (role: AdminRole) => {
     switch (role) {
       case 'super_admin': return 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-800';
+      case 'admin': return 'bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800';
       case 'content_admin': return 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800';
       case 'support_admin': return 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800';
       case 'finance_admin': return 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800';
@@ -152,12 +154,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       )}
 
       <aside className={`
-        fixed lg:sticky top-16 z-40 h-[calc(100vh-4rem)] w-72 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800
-        flex flex-col transition-all duration-300 overflow-y-auto shrink-0
+        fixed lg:sticky top-14 sm:top-16 z-40 h-[calc(100dvh-3.5rem)] sm:h-[calc(100vh-4rem)] w-72 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800
+        flex flex-col transition-all duration-300 overflow-y-auto touch-scroll shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] lg:pb-0
         ${isOpenMobile ? 'left-0' : '-left-72 lg:left-0'}
       `}>
         {/* Role & Access Switcher Header */}
-        <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/40">
+        <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/40 shrink-0">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
               <ShieldAlert className="w-3.5 h-3.5 text-purple-600" />
@@ -171,9 +173,10 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           <select
             value={adminRole}
             onChange={(e) => switchRole(e.target.value as AdminRole)}
-            className="w-full text-xs font-semibold py-2 px-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs focus:ring-2 focus:ring-purple-500 focus:outline-none cursor-pointer"
+            className="w-full text-base sm:text-xs font-semibold py-2 px-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs focus:ring-2 focus:ring-purple-500 focus:outline-none cursor-pointer"
           >
             <option value="super_admin">👑 Super Admin (Full Control)</option>
+            <option value="admin">🛡️ Admin (General Administrator)</option>
             <option value="content_admin">✍️ Content Admin (Books & Chapters)</option>
             <option value="support_admin">🎧 Support Admin (Readers & Grants)</option>
             <option value="finance_admin">💳 Finance Admin (Paystack & Revenue)</option>

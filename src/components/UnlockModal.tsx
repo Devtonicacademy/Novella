@@ -32,23 +32,28 @@ export const UnlockModal: React.FC<UnlockModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200">
-        <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200">
+        <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden max-h-[92dvh] sm:max-h-[90vh] flex flex-col pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
+          {/* Mobile Drag Indicator */}
+          <div className="sm:hidden pt-2.5 pb-1 flex justify-center shrink-0">
+            <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full" />
+          </div>
+
           {/* Header */}
-          <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+          <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
               <Lock className="w-3.5 h-3.5" />
               <span>Unlock Premium Manuscript</span>
             </div>
             <button
               onClick={onClose}
-              className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+              className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="p-6 text-center space-y-5">
+          <div className="p-5 sm:p-6 overflow-y-auto touch-scroll text-center space-y-4 sm:space-y-5 flex-1">
             {/* Book Display */}
             <div className="flex justify-center">
               <BookCover story={story} size="sm" isUnlocked={false} />

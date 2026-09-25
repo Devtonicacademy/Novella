@@ -134,10 +134,15 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[92vh] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
+        {/* Mobile drag indicator */}
+        <div className="sm:hidden pt-2.5 pb-1 flex justify-center bg-zinc-900 shrink-0">
+          <div className="w-10 h-1 bg-zinc-700 rounded-full" />
+        </div>
+
         {/* Paystack Official Header */}
-        <div className="bg-zinc-900 text-white px-6 py-4 flex items-center justify-between border-b border-zinc-800">
+        <div className="bg-zinc-900 text-white px-6 py-4 flex items-center justify-between border-b border-zinc-800 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold text-xs">
               P
@@ -155,14 +160,14 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-zinc-400 hover:text-white transition-colors"
+            className="p-1 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+        <div className="p-5 sm:p-6 overflow-y-auto touch-scroll space-y-5 sm:space-y-6 flex-1">
           {success ? (
             <div className="py-8 text-center space-y-4 animate-in zoom-in-95 duration-300">
               <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center">
@@ -259,7 +264,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your.email@domain.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-600/50"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-base sm:text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-600/50"
                 />
               </div>
 
@@ -275,7 +280,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
                       value={cardNumber}
                       onChange={(e) => setCardNumber(e.target.value)}
                       placeholder="4084 0840 8408 4084"
-                      className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs font-mono"
+                      className="w-full px-3 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-base sm:text-xs font-mono"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -288,7 +293,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
                         value={cardExpiry}
                         onChange={(e) => setCardExpiry(e.target.value)}
                         placeholder="MM/YY"
-                        className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs font-mono"
+                        className="w-full px-3 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-base sm:text-xs font-mono"
                       />
                     </div>
                     <div>
@@ -301,7 +306,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
                         onChange={(e) => setCardCvv(e.target.value)}
                         placeholder="123"
                         maxLength={4}
-                        className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs font-mono"
+                        className="w-full px-3 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-base sm:text-xs font-mono"
                       />
                     </div>
                   </div>
@@ -317,7 +322,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
                     <select
                       value={bankSelected}
                       onChange={(e) => setBankSelected(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs"
+                      className="w-full px-3 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-base sm:text-xs"
                     >
                       <option>Guaranty Trust Bank (GTBank)</option>
                       <option>Access Bank Plc</option>
@@ -355,7 +360,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
               <button
                 type="submit"
                 disabled={processing}
-                className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-70"
+                className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-70 min-h-[46px]"
               >
                 {processing ? (
                   <>

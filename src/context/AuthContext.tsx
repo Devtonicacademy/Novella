@@ -281,7 +281,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isAdminRole = (role?: AdminRole): boolean => {
     if (!role) return false;
-    return ['super_admin', 'content_admin', 'support_admin', 'finance_admin'].includes(role);
+    return ['admin', 'super_admin', 'content_admin', 'support_admin', 'finance_admin'].includes(role);
   };
 
   const isAdmin = Boolean(user && isAdminRole(user.role));
@@ -300,6 +300,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!prev) return prev;
       return { ...prev, role };
     });
+    api.switchRole(role).catch(console.warn);
   };
 
   // Reading streak & activity tracker

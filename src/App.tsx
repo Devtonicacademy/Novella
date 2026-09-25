@@ -144,7 +144,7 @@ function AppContent() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 pb-20 md:pb-8">
+      <main className="flex-1 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-12">
         {loadingStories && stories.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-4">
             <div className="w-10 h-10 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mb-4" />

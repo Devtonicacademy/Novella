@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Story, StoryCategory, Author, CategoryInfo } from '../../types';
+import { INITIAL_CATEGORIES } from '../../data/adminMockData';
 import { BookCover } from '../BookCover';
 import {
   Plus,
@@ -50,12 +51,15 @@ export const BookManagementTab: React.FC<BookManagementTabProps> = ({
   const [editingStory, setEditingStory] = useState<Partial<Story> | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const availableCategories = categories && categories.length > 0 ? categories : INITIAL_CATEGORIES;
 
   // Filtered stories
   const filteredStories = stories.filter((s) => {
     const matchesSearch = s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+      (s.tags && s.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())));
 
     const matchesCategory = selectedCategory === 'all' || s.category === selectedCategory;
     const matchesAccess = selectedAccess === 'all' || (selectedAccess === 'free' ? (s.isFree || s.order <= 2) : (!s.isFree && s.order > 2));
@@ -65,6 +69,7 @@ export const BookManagementTab: React.FC<BookManagementTabProps> = ({
   });
 
   const handleOpenCreate = () => {
+    setFormError(null);
     setEditingStory({
       title: '',
       subtitle: '',
@@ -102,19 +107,31 @@ export const BookManagementTab: React.FC<BookManagementTabProps> = ({
   };
 
   const handleOpenEdit = (story: Story) => {
+    setFormError(null);
     setEditingStory({ ...story });
     setIsModalOpen(true);
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingStory?.title || !editingStory?.author) return;
+    if (!editingStory?.title?.trim()) {
+      setFormError('Story title is required.');
+      return;
+    }
+    if (!editingStory?.author?.trim()) {
+      setFormError('Author name is required.');
+      return;
+    }
 
+    setFormError(null);
     setSaving(true);
     try {
       await onSaveStory(editingStory);
       setIsModalOpen(false);
       setEditingStory(null);
+    } catch (err: any) {
+      console.error('Save story failed:', err);
+      setFormError(err.message || 'Failed to save changes. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -165,7 +182,7 @@ export const BookManagementTab: React.FC<BookManagementTabProps> = ({
             className="text-xs py-2 px-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 cursor-pointer"
           >
             <option value="all">All Genres ({stories.length})</option>
-            {categories.map((c) => (
+            {availableCategories.map((c) => (
               <option key={c.id} value={c.name}>{c.name}</option>
             ))}
           </select>
@@ -348,6 +365,13 @@ export const BookManagementTab: React.FC<BookManagementTabProps> = ({
               </button>
             </div>
 
+            {formError && (
+              <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-400 text-xs flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                <span className="font-medium">{formError}</span>
+              </div>
+            )}
+
             <form onSubmit={handleFormSubmit} className="space-y-4 text-xs">
               {/* Title & Subtitle */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -391,7 +415,7 @@ export const BookManagementTab: React.FC<BookManagementTabProps> = ({
                     onChange={(e) => setEditingStory({ ...editingStory, category: e.target.value as StoryCategory })}
                     className="w-full p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 cursor-pointer"
                   >
-                    {categories.map((c) => (
+                    {availableCategories.map((c) => (
                       <option key={c.id} value={c.name}>{c.name}</option>
                     ))}
                   </select>
@@ -399,39 +423,59 @@ export const BookManagementTab: React.FC<BookManagementTabProps> = ({
               </div>
 
               {/* Pricing */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700">
-                <div>
-                  <label className="font-semibold block mb-1">Price in NGN (₦)</label>
-                  <input
-                    type="number"
-                    value={editingStory.priceNGN ?? 2000}
-                    onChange={(e) => setEditingStory({ ...editingStory, priceNGN: Number(e.target.value) })}
-                    className="w-full p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 font-mono"
-                  />
+              {editingStory.order && editingStory.order <= 2 ? (
+                <div className="p-3.5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex items-center gap-3">
+                  <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                  <p className="text-xs text-amber-800 dark:text-amber-300">
+                    <strong>Rule-Protected Introductory Book (Vol #{editingStory.order}):</strong> Books #1 and #2 are permanently configured as free stories for all readers.
+                  </p>
                 </div>
-                <div>
-                  <label className="font-semibold block mb-1">Price in USD ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={editingStory.priceUSD ?? 2.80}
-                    onChange={(e) => setEditingStory({ ...editingStory, priceUSD: Number(e.target.value) })}
-                    className="w-full p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 font-mono"
-                  />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700">
+                  <div>
+                    <label className="font-semibold block mb-1">Price in NGN (₦)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      disabled={editingStory.isFree}
+                      value={editingStory.isFree ? 0 : (editingStory.priceNGN ?? 2000)}
+                      onChange={(e) => {
+                        const val = Math.max(0, Number(e.target.value));
+                        setEditingStory({
+                          ...editingStory,
+                          priceNGN: val,
+                          priceUSD: Number((val / 1450).toFixed(2))
+                        });
+                      }}
+                      className="w-full p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 font-mono disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold block mb-1">Price in USD ($)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      disabled={editingStory.isFree}
+                      value={editingStory.isFree ? 0 : (editingStory.priceUSD ?? 2.80)}
+                      onChange={(e) => setEditingStory({ ...editingStory, priceUSD: Math.max(0, Number(e.target.value)) })}
+                      className="w-full p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 font-mono disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold block mb-1">Publishing Status</label>
+                    <select
+                      value={editingStory.status || 'published'}
+                      onChange={(e) => setEditingStory({ ...editingStory, status: e.target.value as any })}
+                      className="w-full p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900"
+                    >
+                      <option value="published">Published</option>
+                      <option value="draft">Save as Draft</option>
+                      <option value="archived">Archived</option>
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="font-semibold block mb-1">Publishing Status</label>
-                  <select
-                    value={editingStory.status || 'published'}
-                    onChange={(e) => setEditingStory({ ...editingStory, status: e.target.value as any })}
-                    className="w-full p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900"
-                  >
-                    <option value="published">Published</option>
-                    <option value="draft">Save as Draft</option>
-                    <option value="archived">Archived</option>
-                  </select>
-                </div>
-              </div>
+              )}
 
               {/* Description */}
               <div>
@@ -458,18 +502,29 @@ export const BookManagementTab: React.FC<BookManagementTabProps> = ({
               </div>
 
               {/* Free Story Toggle */}
-              <div className="flex items-center gap-3 pt-2">
-                <input
-                  type="checkbox"
-                  id="isFreeStory"
-                  checked={editingStory.isFree || false}
-                  onChange={(e) => setEditingStory({ ...editingStory, isFree: e.target.checked })}
-                  className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
-                />
-                <label htmlFor="isFreeStory" className="font-semibold cursor-pointer">
-                  Make this book completely free for all readers (Override paywall)
-                </label>
-              </div>
+              {(!editingStory.order || editingStory.order > 2) && (
+                <div className="flex items-center gap-3 pt-2">
+                  <input
+                    type="checkbox"
+                    id="isFreeStory"
+                    checked={editingStory.isFree || false}
+                    onChange={(e) => {
+                      const isFree = e.target.checked;
+                      setEditingStory({
+                        ...editingStory,
+                        isFree,
+                        ...(isFree
+                          ? { priceNGN: 0, priceUSD: 0 }
+                          : { priceNGN: editingStory.priceNGN || 2000, priceUSD: editingStory.priceUSD || 2.80 })
+                      });
+                    }}
+                    className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                  />
+                  <label htmlFor="isFreeStory" className="font-semibold cursor-pointer">
+                    Make this book completely free for all readers (Override paywall)
+                  </label>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="flex justify-end gap-2 pt-4 border-t border-zinc-100 dark:border-zinc-800">
