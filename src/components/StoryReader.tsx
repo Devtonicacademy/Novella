@@ -276,6 +276,7 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
     serif: 'font-reading',
     sans: 'font-sans-ui',
     mono: 'font-mono-code',
+    dyslexic: 'font-reading tracking-wide',
   };
 
   const fontSizes: Record<ReaderFontSize, string> = {
@@ -294,10 +295,11 @@ export const StoryReader: React.FC<StoryReaderProps> = ({
     oled: 'theme-oled',
   };
 
-  const maxWidthClasses = {
+  const maxWidthClasses: Record<string, string> = {
     narrow: 'max-w-xl',
     normal: 'max-w-2xl',
     wide: 'max-w-4xl',
+    full: 'max-w-full',
   };
 
   const handleNextChapter = () => {

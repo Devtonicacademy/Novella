@@ -191,6 +191,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     fetchAllAdminData();
   };
 
+  const handleAddAdmin = async (adminData: {
+    email: string;
+    fullName?: string;
+    displayName?: string;
+    role?: AdminRole;
+    password?: string;
+    bio?: string;
+  }) => {
+    await api.addAdmin(adminData);
+    fetchAllAdminData();
+  };
+
   const handleToggleUserStatus = async (userId: string, _status: 'active' | 'suspended') => {
     await api.toggleUserStatus(userId);
     fetchAllAdminData();
@@ -401,6 +413,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <RolesManagementTab
               users={users}
               onUpdateRole={handleUpdateUserRole}
+              onAddAdmin={handleAddAdmin}
             />
           )}
 

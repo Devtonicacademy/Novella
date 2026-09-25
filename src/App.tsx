@@ -398,7 +398,7 @@ function AppContent() {
         <ActivityFeedModal
           isOpen={isActivityFeedOpen}
           onClose={() => setIsActivityFeedOpen(false)}
-          onSelectStory={(story) => {
+          onOpenStory={(story) => {
             setIsActivityFeedOpen(false);
             setSelectedStory(story);
           }}
@@ -424,7 +424,7 @@ function AppContent() {
         <AIWritingSuiteModal
           isOpen={isAIWritingSuiteOpen}
           onClose={() => setIsAIWritingSuiteOpen(false)}
-          onApplyDraft={(title, content) => {
+          onApplyTitle={(_title) => {
             setIsAIWritingSuiteOpen(false);
             handleNavigate('author-studio');
           }}

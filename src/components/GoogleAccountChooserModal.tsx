@@ -16,6 +16,12 @@ interface GoogleAccountChooserModalProps {
 
 export const DEFAULT_GOOGLE_ACCOUNTS: GoogleSavedAccount[] = [
   {
+    email: 'devtonicllc@gmail.com',
+    name: 'Devtonic Admin',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+    type: 'admin'
+  },
+  {
     email: 'ozerojephthah0@gmail.com',
     name: 'Jephthah Ozero',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',

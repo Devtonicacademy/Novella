@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { UserProfile, UserBookmark, Story, AdminRole, ReadingStreak, ReadingGoals, StoryCollection, ReaderAchievement, RecentlyViewedItem } from '../types';
 import { api, setStoredAuthToken } from '../services/api';
+import { firebaseSignIn, firebaseSignUp, firebaseSignOutUser, firebaseSendPasswordReset } from '../services/firebase';
 
 const DEFAULT_ACHIEVEMENTS: ReaderAchievement[] = [
   {
@@ -122,7 +123,9 @@ interface AuthContextType {
   addStoryToCollection: (collectionId: string, storyId: string) => void;
   removeStoryFromCollection: (collectionId: string, storyId: string) => void;
   toggleLikeStory: (storyId: string) => Promise<void>;
+  isStoryLiked: (storyId: string) => boolean;
   toggleFollowAuthor: (authorId: string) => Promise<void>;
+  isAuthorFollowed: (authorId: string) => boolean;
   recordRecentlyViewed: (storyId: string) => void;
   addBookmark: (bookmark: Omit<UserBookmark, 'id' | 'createdAt'>) => Promise<void>;
   removeBookmark: (bookmarkId: string) => Promise<void>;
@@ -473,6 +476,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const isStoryLiked = (storyId: string): boolean => {
+    if (!user) return false;
+    return Boolean(user.likedStoryIds?.includes(storyId));
+  };
+
+  const isAuthorFollowed = (authorId: string): boolean => {
+    if (!user) return false;
+    return Boolean(user.followingAuthorIds?.includes(authorId));
+  };
+
   const recordRecentlyViewed = (storyId: string) => {
     setUser((prev) => {
       if (!prev) return prev;
@@ -489,6 +502,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithEmail = async (email: string, password: string = 'NovellaReader2026!'): Promise<UserProfile> => {
+    try {
+      await firebaseSignIn(email, password);
+    } catch (fbErr) {
+      console.warn('Firebase Auth signin notice (proceeding with session):', fbErr);
+    }
     const response = await api.signin(email, password);
     setToken(response.token);
     setUser({
@@ -505,6 +523,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fullName: string = '',
     confirmPassword?: string
   ): Promise<UserProfile> => {
+    try {
+      await firebaseSignUp(email, password);
+    } catch (fbErr) {
+      console.warn('Firebase Auth signup notice (proceeding with session):', fbErr);
+    }
     const response = await api.signup(fullName || email.split('@')[0], email, password, confirmPassword || password);
     setToken(response.token);
     setUser({
@@ -530,6 +553,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const adminSignIn = async (email: string, password: string): Promise<UserProfile> => {
+    try {
+      await firebaseSignIn(email, password);
+    } catch (fbErr) {
+      console.warn('Firebase Auth admin signin notice (proceeding with session):', fbErr);
+    }
     const response = await api.adminSignin(email, password);
     setToken(response.token);
     setUser(response.user);
@@ -552,6 +580,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const requestPasswordReset = async (email: string) => {
+    try {
+      await firebaseSendPasswordReset(email);
+    } catch (fbErr) {
+      console.warn('Firebase Auth reset notice (proceeding with server):', fbErr);
+    }
     return await api.forgotPassword(email);
   };
 
@@ -642,6 +675,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    try {
+      await firebaseSignOutUser();
+    } catch {
+      // Ignore
+    }
     setToken(null);
     setUser(null);
     setStoredAuthToken(null);
@@ -669,7 +707,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addStoryToCollection,
         removeStoryFromCollection,
         toggleLikeStory,
+        isStoryLiked,
         toggleFollowAuthor,
+        isAuthorFollowed,
         recordRecentlyViewed,
         addBookmark,
         removeBookmark,

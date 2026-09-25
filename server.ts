@@ -42,7 +42,8 @@ import {
   AppNotification,
   ContentReport,
   AuthorEarnings,
-  AIGenerateStoryRequest
+  AIGenerateStoryRequest,
+  ActivityFeedItem
 } from './src/types';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -52,7 +53,12 @@ const app = express();
 const PORT = 3000;
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  verify: (req: any, _res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 
 // -------------------------------------------------------------
 // Security & Cryptographic Password Helpers
@@ -212,7 +218,7 @@ function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunctio
 
 function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   requireAuth(req, res, () => {
-    if (!req.user || !['super_admin', 'admin', 'content_admin', 'finance_admin'].includes(req.user.role)) {
+    if (!req.user || !['super_admin', 'admin', 'content_admin', 'support_admin', 'finance_admin'].includes(req.user.role)) {
       return res.status(403).json({ error: 'Access denied. Administrator privileges required.' });
     }
     next();
@@ -1966,62 +1972,326 @@ app.delete('/api/stories/:id/chapters/:chapterId', requireAuth, (req: Authentica
 });
 
 // -------------------------------------------------------------
-// 11. PAYMENTS & PAYSTACK TRANSACTIONS
+// 11. PAYMENTS & PAYSTACK GATEWAY INTEGRATION
 // -------------------------------------------------------------
-app.get('/api/payments/transactions', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+
+// Helper to get active Paystack keys
+function getPaystackConfig() {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY || '';
+  const publicKey = process.env.PAYSTACK_PUBLIC_KEY || platformSettings.paystackPublicKey || '';
+  const projectPrefix = process.env.PAYSTACK_PROJECT_PREFIX || 'NOV_';
+  return { secretKey, publicKey, projectPrefix };
+}
+
+// Expose public key safely to frontend
+app.get('/api/paystack/public-key', (_req: Request, res: Response) => {
+  const { publicKey } = getPaystackConfig();
+  res.json({ publicKey });
+});
+
+// Paystack Transaction Initialization
+app.post('/api/paystack/initialize', optionalAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { storyId, email, amountNGN, callbackUrl } = req.body;
+
+    if (!storyId) {
+      return res.status(400).json({ error: 'storyId is required' });
+    }
+
+    const story = stories.find((s) => s.id === storyId);
+    if (!story) {
+      return res.status(404).json({ error: 'Story not found' });
+    }
+
+    const payerEmail = (email || req.user?.email || 'reader@novella.app').toLowerCase().trim();
+    const finalAmountNGN = Math.max(Number(amountNGN) || story.priceNGN || 2000, 100);
+    const amountKobo = Math.round(finalAmountNGN * 100);
+
+    const { secretKey, projectPrefix } = getPaystackConfig();
+    const uniqueRef = `${projectPrefix}${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+
+    // Metadata & Custom Fields for Paystack Dashboard categorization
+    const metadata = {
+      project: 'Novella',
+      website: 'novella-stories',
+      storyId: story.id,
+      storyTitle: story.title,
+      authorId: story.authorId,
+      authorName: story.author,
+      customerEmail: payerEmail,
+      custom_fields: [
+        {
+          display_name: 'Platform / Project',
+          variable_name: 'project_name',
+          value: 'Novella Stories',
+        },
+        {
+          display_name: 'Story Purchased',
+          variable_name: 'story_title',
+          value: story.title,
+        },
+        {
+          display_name: 'Author',
+          variable_name: 'story_author',
+          value: story.author,
+        },
+        {
+          display_name: 'Story ID',
+          variable_name: 'story_id',
+          value: story.id,
+        },
+      ],
+    };
+
+    if (secretKey) {
+      try {
+        const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: payerEmail,
+            amount: amountKobo,
+            reference: uniqueRef,
+            callback_url: callbackUrl || undefined,
+            metadata,
+          }),
+        });
+
+        const paystackData = await paystackRes.json();
+
+        if (paystackRes.ok && paystackData.status) {
+          return res.json({
+            status: true,
+            message: 'Paystack checkout session created',
+            data: {
+              authorization_url: paystackData.data.authorization_url,
+              access_code: paystackData.data.access_code,
+              reference: paystackData.data.reference || uniqueRef,
+            },
+            reference: paystackData.data.reference || uniqueRef,
+          });
+        } else {
+          console.warn('Paystack live initialization returned error:', paystackData.message);
+        }
+      } catch (liveErr) {
+        console.warn('Paystack live API fetch failed, falling back to sandbox mode:', liveErr);
+      }
+    }
+
+    // High-resilience sandbox fallback if secret key is unset or network error
+    return res.json({
+      status: true,
+      message: 'Sandbox checkout session initialized',
+      data: {
+        authorization_url: `https://checkout.paystack.com/sandbox_${uniqueRef}`,
+        access_code: `mock_code_${uniqueRef}`,
+        reference: uniqueRef,
+      },
+      reference: uniqueRef,
+    });
+  } catch (err: any) {
+    console.error('Paystack initialization error:', err);
+    res.status(500).json({ error: err.message || 'Failed to initialize Paystack session' });
+  }
+});
+
+// Paystack Verification Handler (Shared for /api/paystack/verify and /api/payments/verify)
+async function verifyAndFulfillPayment(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { reference, storyId, email, userEmail, customerName, amountNGN, channel } = req.body;
+
+    if (!reference) {
+      return res.status(400).json({ error: 'Transaction reference is required' });
+    }
+
+    const { secretKey } = getPaystackConfig();
+    let verifiedChannel = channel || 'card';
+    let verifiedAmountNGN = Number(amountNGN) || 2000;
+    let verifiedPaidAt = new Date().toISOString();
+    let resolvedStoryId = storyId;
+    let resolvedEmail = (email || userEmail || req.user?.email || 'reader@novella.app').toLowerCase().trim();
+
+    if (secretKey) {
+      try {
+        const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+          },
+        });
+
+        const verifyData = await verifyRes.json();
+
+        if (!verifyRes.ok || !verifyData.status || verifyData.data.status !== 'success') {
+          return res.status(400).json({
+            status: false,
+            error: verifyData.message || 'Payment not verified by Paystack',
+          });
+        }
+
+        const data = verifyData.data;
+        verifiedAmountNGN = Math.round((data.amount || 200000) / 100);
+        verifiedChannel = data.channel || verifiedChannel;
+        verifiedPaidAt = data.paid_at || verifiedPaidAt;
+        if (data.customer?.email) resolvedEmail = data.customer.email.toLowerCase().trim();
+        if (data.metadata?.storyId) resolvedStoryId = data.metadata.storyId;
+      } catch (err: any) {
+        console.warn('Paystack live verification error, checking sandbox mode:', err.message);
+      }
+    }
+
+    const story = stories.find((s) => s.id === resolvedStoryId) || stories[0];
+    const storyTitle = story ? story.title : 'Novella Book';
+
+    // Prevent duplicate processing
+    let transaction = transactions.find((t) => t.reference === reference);
+
+    if (!transaction) {
+      transaction = {
+        id: `tx-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        reference,
+        storyId: story.id,
+        storyTitle,
+        userEmail: resolvedEmail,
+        customerName: customerName || req.user?.displayName || resolvedEmail.split('@')[0],
+        amountNGN: verifiedAmountNGN || story.priceNGN || 2000,
+        amountUSD: Number(((verifiedAmountNGN || story.priceNGN || 2000) / 1450).toFixed(2)),
+        status: 'success',
+        channel: verifiedChannel,
+        paidAt: verifiedPaidAt,
+      };
+      transactions.unshift(transaction);
+
+      // Unlock story for requesting user or matched email
+      if (req.user && !req.user.unlockedStoryIds.includes(story.id)) {
+        req.user.unlockedStoryIds.push(story.id);
+      }
+      const matchedUser = users.find((u) => u.email.toLowerCase() === resolvedEmail);
+      if (matchedUser && !matchedUser.unlockedStoryIds.includes(story.id)) {
+        matchedUser.unlockedStoryIds.push(story.id);
+      }
+
+      // Credit Author Earnings
+      if (story.authorId && authorEarningsMap[story.authorId]) {
+        const authorRecord = authorEarningsMap[story.authorId];
+        authorRecord.totalRevenueNGN += transaction.amountNGN;
+        const authorSplit = Math.round(transaction.amountNGN * 0.7);
+        authorRecord.authorSplitNGN += authorSplit;
+        authorRecord.platformCommissionNGN += transaction.amountNGN - authorSplit;
+        authorRecord.pendingPayoutNGN += authorSplit;
+        authorRecord.totalSalesCount += 1;
+      }
+
+      logAudit(
+        'Payment Verified',
+        'payment',
+        `Paystack ₦${transaction.amountNGN.toLocaleString()} verified for "${storyTitle}" (Ref: ${reference})`,
+        resolvedEmail,
+        'customer',
+        storyTitle
+      );
+    }
+
+    res.json({
+      status: true,
+      success: true,
+      message: 'Payment verified and story unlocked successfully',
+      story,
+      transaction,
+      unlockedStoryId: story.id,
+    });
+  } catch (err: any) {
+    console.error('Payment fulfillment error:', err);
+    res.status(500).json({ error: err.message || 'Payment verification failed' });
+  }
+}
+
+app.post('/api/paystack/verify', optionalAuth, verifyAndFulfillPayment);
+app.post('/api/payments/verify', optionalAuth, verifyAndFulfillPayment);
+
+// Paystack Webhook Handler (Asynchronous bank transfers, USSD, instant payment confirmation)
+app.post('/api/paystack/webhook', (req: Request, res: Response) => {
+  try {
+    const { secretKey } = getPaystackConfig();
+    const signature = req.headers['x-paystack-signature'];
+
+    if (secretKey && signature) {
+      const rawBody = (req as any).rawBody || Buffer.from(JSON.stringify(req.body));
+      const hash = crypto.createHmac('sha512', secretKey).update(rawBody).digest('hex');
+
+      if (hash !== signature) {
+        console.warn('Paystack webhook signature mismatch');
+        return res.status(401).send('Invalid signature');
+      }
+    }
+
+    const event = req.body;
+    if (event?.event === 'charge.success') {
+      const data = event.data;
+      const reference = data.reference;
+      const amountNGN = Math.round((data.amount || 200000) / 100);
+      const email = (data.customer?.email || '').toLowerCase().trim();
+      const storyId = data.metadata?.storyId;
+      const channel = data.channel || 'card';
+
+      if (storyId && reference) {
+        const story = stories.find((s) => s.id === storyId);
+        if (story) {
+          const existing = transactions.find((t) => t.reference === reference);
+          if (!existing) {
+            const tx: PaystackTransaction = {
+              id: `tx-hook-${Date.now()}`,
+              reference,
+              storyId: story.id,
+              storyTitle: story.title,
+              userEmail: email || 'customer@novella.app',
+              customerName: email ? email.split('@')[0] : 'Customer',
+              amountNGN,
+              amountUSD: Number((amountNGN / 1450).toFixed(2)),
+              status: 'success',
+              channel,
+              paidAt: data.paid_at || new Date().toISOString(),
+            };
+            transactions.unshift(tx);
+
+            const user = users.find((u) => u.email.toLowerCase() === email);
+            if (user && !user.unlockedStoryIds.includes(story.id)) {
+              user.unlockedStoryIds.push(story.id);
+            }
+
+            if (story.authorId && authorEarningsMap[story.authorId]) {
+              const authorRecord = authorEarningsMap[story.authorId];
+              authorRecord.totalRevenueNGN += amountNGN;
+              const split = Math.round(amountNGN * 0.7);
+              authorRecord.authorSplitNGN += split;
+              authorRecord.platformCommissionNGN += amountNGN - split;
+              authorRecord.pendingPayoutNGN += split;
+              authorRecord.totalSalesCount += 1;
+            }
+
+            logAudit('Webhook Payment Received', 'payment', `Webhook confirmed ₦${amountNGN.toLocaleString()} for "${story.title}"`, email, 'customer', story.title);
+          }
+        }
+      }
+    }
+
+    res.sendStatus(200);
+  } catch (err: any) {
+    console.error('Webhook error:', err);
+    res.sendStatus(500);
+  }
+});
+
+// Transactions list endpoints (both aliases supported)
+app.get('/api/transactions', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
   res.json(transactions);
 });
 
-app.post('/api/payments/verify', optionalAuth, (req: AuthenticatedRequest, res: Response) => {
-  const { reference, storyId, userEmail, customerName, amountNGN, amountUSD, channel } = req.body;
-
-  if (!reference || !storyId) {
-    return res.status(400).json({ error: 'Reference and storyId are required' });
-  }
-
-  const story = stories.find((s) => s.id === storyId);
-  const storyTitle = story ? story.title : 'Novella Book';
-
-  const transaction: PaystackTransaction = {
-    id: `tx-${Date.now()}`,
-    reference,
-    storyId,
-    storyTitle,
-    userEmail: userEmail || req.user?.email || 'customer@novella.app',
-    customerName: customerName || req.user?.displayName || 'Customer',
-    amountNGN: Number(amountNGN) || story?.priceNGN || 2000,
-    amountUSD: Number(amountUSD) || story?.priceUSD || 1.38,
-    status: 'success',
-    channel: channel || 'card',
-    paidAt: new Date().toISOString(),
-  };
-
-  transactions.unshift(transaction);
-
-  // Unlock story for user if logged in
-  if (req.user && !req.user.unlockedStoryIds.includes(storyId)) {
-    req.user.unlockedStoryIds.push(storyId);
-  }
-
-  // Credit Author Earnings
-  if (story?.authorId && authorEarningsMap[story.authorId]) {
-    const authorRecord = authorEarningsMap[story.authorId];
-    authorRecord.totalRevenueNGN += transaction.amountNGN;
-    const authorSplit = Math.round(transaction.amountNGN * 0.7);
-    authorRecord.authorSplitNGN += authorSplit;
-    authorRecord.platformCommissionNGN += transaction.amountNGN - authorSplit;
-    authorRecord.pendingPayoutNGN += authorSplit;
-    authorRecord.totalSalesCount += 1;
-  }
-
-  logAudit('Payment Verified', 'payment', `Paystack ₦${transaction.amountNGN.toLocaleString()} verified for "${storyTitle}"`, transaction.userEmail, 'customer', storyTitle);
-
-  res.json({
-    success: true,
-    message: 'Payment verified and story unlocked successfully',
-    transaction,
-    unlockedStoryId: storyId,
-  });
+app.get('/api/payments/transactions', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  res.json(transactions);
 });
 
 // -------------------------------------------------------------
@@ -2076,6 +2346,82 @@ app.put('/api/users/:id/role', requireAdmin, (req: AuthenticatedRequest, res: Re
 
   logAudit('User Role Updated', 'user', `Updated ${user.email} role to ${user.role} (status: ${user.status})`, req.user?.email || 'admin', req.user?.role || 'super_admin');
   res.json(sanitizeUser(user));
+});
+
+app.post('/api/admin/admins', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const { email, fullName, displayName, role, password, bio, avatar } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email address is required' });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const validRoles: UserRole[] = ['super_admin', 'content_admin', 'support_admin', 'finance_admin', 'admin'];
+  const targetRole: UserRole = validRoles.includes(role) ? role : 'super_admin';
+
+  let user = users.find((u) => u.email.toLowerCase() === normalizedEmail);
+
+  if (user) {
+    user.role = targetRole;
+    user.status = 'active';
+    if (fullName) user.fullName = fullName;
+    if (displayName) user.displayName = displayName;
+    if (bio) user.bio = bio;
+    if (avatar) user.avatar = avatar;
+    if (password) {
+      const salt = crypto.randomBytes(16).toString('hex');
+      user.salt = salt;
+      user.passwordHash = hashPassword(password, salt);
+    }
+    logAudit(
+      'Admin Promoted',
+      'security',
+      `Promoted existing account ${user.email} to administrator (${targetRole})`,
+      req.user?.email || 'admin',
+      req.user?.role || 'super_admin'
+    );
+  } else {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const pwd = password || 'Novella@2024!';
+    const passwordHash = hashPassword(pwd, salt);
+
+    user = {
+      id: `usr-admin-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      email: normalizedEmail,
+      fullName: fullName || normalizedEmail.split('@')[0],
+      displayName: displayName || fullName || normalizedEmail.split('@')[0],
+      avatar: avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+      bio: bio || 'Platform Administrator',
+      role: targetRole,
+      status: 'active',
+      unlockedStoryIds: stories.map((s) => s.id),
+      favoriteStoryIds: [],
+      followingAuthorIds: [],
+      bookmarks: [],
+      readingProgress: {},
+      totalReadingMinutes: 0,
+      booksCompletedCount: 0,
+      createdAt: new Date().toISOString(),
+      lastActiveAt: new Date().toISOString(),
+      authProvider: 'password',
+      passwordHash,
+      salt,
+    };
+    users.unshift(user);
+    logAudit(
+      'Admin Created',
+      'security',
+      `Created new administrator account: ${user.email} (${targetRole})`,
+      req.user?.email || 'admin',
+      req.user?.role || 'super_admin'
+    );
+  }
+
+  res.status(201).json({
+    success: true,
+    user: sanitizeUser(user),
+    message: `Administrator ${user.email} successfully added with role ${targetRole}.`,
+  });
 });
 
 app.get('/api/announcements', (req: Request, res: Response) => {

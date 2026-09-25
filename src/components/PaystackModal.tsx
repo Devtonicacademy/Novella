@@ -30,6 +30,13 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [publicKey, setPublicKey] = useState<string>('');
+
+  React.useEffect(() => {
+    api.getPaystackPublicKey().then((key) => {
+      if (key) setPublicKey(key);
+    });
+  }, []);
 
   if (!isOpen) return null;
 
@@ -39,31 +46,79 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
     setErrorMessage(null);
 
     try {
-      // 1. Initialize session on backend
-      const initRes = await api.initializePaystack(story.id, email, story.priceNGN);
-      const reference = initRes?.data?.reference || `PSTK_${Date.now()}`;
+      // 1. Initialize session on backend with metadata & project prefix
+      const initRes = await api.initializePayment(email, story.id, story.priceNGN);
+      const reference = initRes?.reference || initRes?.data?.reference || `NOV_${Date.now()}`;
+      const accessCode = initRes?.data?.access_code || '';
+      const authUrl = initRes?.data?.authorization_url || '';
 
-      // Simulate payment network latency
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const isLiveCheckout = Boolean(
+        publicKey && 
+        accessCode && 
+        !accessCode.startsWith('mock_') && 
+        authUrl && 
+        !authUrl.includes('sandbox_')
+      );
 
-      // 2. Verify with backend
-      const verifyRes = await api.verifyPaystack(reference, story.id, email, paymentChannel);
+      // If live Paystack keys are present and PaystackPop is loaded, launch official Paystack Popup
+      if (isLiveCheckout && typeof (window as any).PaystackPop !== 'undefined') {
+        const handler = (window as any).PaystackPop.setup({
+          key: publicKey,
+          email: email.trim(),
+          amount: Math.round(story.priceNGN * 100),
+          ref: reference,
+          metadata: {
+            storyId: story.id,
+            storyTitle: story.title,
+            custom_fields: [
+              { display_name: 'Project', variable_name: 'project_name', value: 'Novella Stories' },
+              { display_name: 'Book Title', variable_name: 'story_title', value: story.title },
+            ],
+          },
+          callback: async (response: any) => {
+            const verifiedRef = response.reference || reference;
+            try {
+              const verifyRes = await api.verifyPayment(verifiedRef, email, story.id);
+              if (verifyRes.status) {
+                unlockStory(story.id);
+                setSuccess(true);
+                try {
+                  confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+                } catch {}
+                setTimeout(() => onSuccess(), 1800);
+              } else {
+                setErrorMessage('Payment verification unconfirmed. Please contact support.');
+              }
+            } catch (vErr: any) {
+              setErrorMessage(vErr.message || 'Payment verification failed');
+            } finally {
+              setProcessing(false);
+            }
+          },
+          onClose: () => {
+            setProcessing(false);
+          },
+        });
+
+        handler.openIframe();
+        return;
+      }
+
+      // High-craft sandbox execution (when testing without live keys or offline)
+      await new Promise((resolve) => setTimeout(resolve, 1400));
+
+      const verifyRes = await api.verifyPayment(reference, email, story.id);
 
       if (verifyRes.status) {
-        // Unlock locally & in context
         unlockStory(story.id);
         setSuccess(true);
-
         try {
           confetti({
             particleCount: 80,
             spread: 70,
             origin: { y: 0.6 },
           });
-        } catch {
-          // ignore
-        }
-
+        } catch {}
         setTimeout(() => {
           onSuccess();
         }, 1800);

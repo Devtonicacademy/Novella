@@ -104,7 +104,7 @@ export const ActivityFeedModal: React.FC<ActivityFeedModalProps> = ({
     } catch {
       setFeedItems((prev) =>
         prev.map((item) =>
-          item.id === itemId ? { ...item, likesCount: item.likesCount + 1, isLiked: true } : item
+          item.id === itemId ? { ...item, likesCount: (item.likesCount || 0) + 1, isLiked: true } : item
         )
       );
     }
@@ -125,7 +125,8 @@ export const ActivityFeedModal: React.FC<ActivityFeedModalProps> = ({
     }
   };
 
-  const formatTime = (iso: string) => {
+  const formatTime = (iso?: string) => {
+    if (!iso) return 'Recently';
     try {
       const diffMin = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
       if (diffMin < 60) return `${diffMin}m ago`;
@@ -180,6 +181,7 @@ export const ActivityFeedModal: React.FC<ActivityFeedModalProps> = ({
             </div>
           ) : (
             feedItems.map((item) => {
+              const actorNameDisplay = item.actorName || item.authorName || 'Reader';
               const matchedStory = item.storyId ? allStories.find((s) => s.id === item.storyId) : undefined;
               return (
                 <div
@@ -189,15 +191,15 @@ export const ActivityFeedModal: React.FC<ActivityFeedModalProps> = ({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-950 flex items-center justify-center text-amber-800 dark:text-amber-300 font-bold text-xs border border-amber-300 dark:border-amber-800">
-                        {item.actorName.charAt(0)}
+                        {actorNameDisplay.charAt(0)}
                       </div>
                       <div>
                         <span className="font-bold text-xs text-zinc-900 dark:text-zinc-100 block">
-                          {item.actorName}
+                          {actorNameDisplay}
                         </span>
                         <span className="text-[10px] text-zinc-400 flex items-center gap-1">
                           <Clock className="w-2.5 h-2.5" />
-                          {formatTime(item.timestamp)}
+                          {formatTime(item.timestamp || item.createdAt)}
                         </span>
                       </div>
                     </div>

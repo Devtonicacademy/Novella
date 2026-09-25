@@ -169,12 +169,13 @@ export interface ActivityFeedItem {
   actorName?: string;
   actorAvatar?: string;
   type: 'new_story' | 'new_chapter' | 'announcement' | 'milestone' | 'chapter_release' | 'streak_milestone' | 'story_review' | 'author_announcement' | string;
-  title: string;
+  title?: string;
+  storyTitle?: string;
   description?: string;
   content?: string;
   storyId?: string;
   chapterId?: string;
-  createdAt: string;
+  createdAt?: string;
   timestamp?: string;
   likes?: number;
   likesCount?: number;
@@ -187,12 +188,13 @@ export interface AICharacterProfile {
   alias?: string;
   archetype: string;
   role: string;
-  personality: string[];
+  personality?: string[];
   background?: string;
   backstory?: string;
   motivation?: string;
   flaw?: string;
   secret?: string;
+  internalConflict?: string;
   catchphrase?: string;
   goals?: {
     internal: string;
@@ -206,7 +208,7 @@ export interface AICharacterProfile {
 
 export interface AIStoryIdea {
   title: string;
-  logline: string;
+  logline?: string;
   premise: string;
   theme?: string;
   genre?: string;
@@ -214,6 +216,7 @@ export interface AIStoryIdea {
   protagonist?: string;
   antagonist?: string;
   keyConflicts?: string[];
+  keyCharacters?: string[];
   majorPlotPoints?: string[];
   plotTwist?: string;
   twist?: string;
@@ -222,11 +225,12 @@ export interface AIStoryIdea {
 
 export interface AITitleSuggestion {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   tagline?: string;
   hook?: string;
-  tone: string;
-  category: string;
+  tone?: string;
+  category?: string;
+  genre?: string;
 }
 
 export interface StoryTranslation {

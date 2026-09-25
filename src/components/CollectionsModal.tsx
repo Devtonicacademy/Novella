@@ -16,7 +16,7 @@ import {
 interface CollectionsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  story: Story;
+  story?: Story;
 }
 
 export const CollectionsModal: React.FC<CollectionsModalProps> = ({
@@ -35,6 +35,7 @@ export const CollectionsModal: React.FC<CollectionsModalProps> = ({
   const collections: StoryCollection[] = user?.collections || [];
 
   const handleToggleStory = (collection: StoryCollection) => {
+    if (!story) return;
     const isIn = collection.storyIds.includes(story.id);
     if (isIn) {
       removeStoryFromCollection(collection.id, story.id);
@@ -82,7 +83,7 @@ export const CollectionsModal: React.FC<CollectionsModalProps> = ({
                 Save to Collection
               </h3>
               <p className="text-[11px] text-zinc-500 truncate max-w-[220px]">
-                Organize "{story.title}" into reading lists
+                {story ? `Organize "${story.title}" into reading lists` : 'Curate your reading lists and private libraries'}
               </p>
             </div>
           </div>
@@ -106,7 +107,7 @@ export const CollectionsModal: React.FC<CollectionsModalProps> = ({
         {/* Collections List */}
         <div className="p-5 overflow-y-auto space-y-2.5 flex-1">
           {collections.map((col) => {
-            const isSaved = col.storyIds.includes(story.id);
+            const isSaved = story ? col.storyIds.includes(story.id) : false;
             return (
               <div
                 key={col.id}

@@ -647,6 +647,19 @@ export const api = {
   // -------------------------------------------------------------
   // PAYMENTS & PAYSTACK TRANSACTIONS
   // -------------------------------------------------------------
+  async getPaystackPublicKey(): Promise<string> {
+    try {
+      const res = await fetch(`${API_BASE}/paystack/public-key`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.publicKey || '';
+      }
+    } catch {
+      // Fallback
+    }
+    return '';
+  },
+
   async initializePayment(email: string, storyId: string, amountNGN: number): Promise<{
     reference: string;
     access_code: string;
@@ -802,6 +815,28 @@ export const api = {
 
   async toggleUserStatus(userId: string): Promise<UserProfile> {
     return this.updateUserRole(userId, 'user', 'suspended');
+  },
+
+  async addAdmin(adminData: {
+    email: string;
+    fullName?: string;
+    displayName?: string;
+    role?: string;
+    password?: string;
+    bio?: string;
+    avatar?: string;
+  }): Promise<{ success: boolean; user: UserProfile; message: string }> {
+    const res = await fetch(`${API_BASE}/admin/admins`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(adminData),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to add administrator');
+    }
+    return data;
   },
 
   async getStats(): Promise<any> {

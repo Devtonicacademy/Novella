@@ -239,6 +239,36 @@ export const INITIAL_CATEGORIES: CategoryInfo[] = [
 
 export const INITIAL_ADMIN_USERS: UserProfile[] = [
   {
+    id: 'usr-admin-devtonic',
+    email: 'devtonicllc@gmail.com',
+    fullName: 'Devtonic Admin',
+    displayName: 'Devtonic Admin',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+    bio: 'Platform Administrator & Technical Operations.',
+    role: 'super_admin',
+    status: 'active',
+    unlockedStoryIds: [
+      'story-1-anatomy-of-the-dead',
+      'story-2-five-spirits-from-the-east',
+      'story-3-gods-will',
+      'story-4-lets-pray-for-cameroon',
+      'story-5-retired-general-bonzai',
+      'story-6-the-ugly-owl',
+      'story-7-echoes-of-the-savanna',
+      'story-8-the-secret-of-zuma-rock',
+      'story-9-trials-of-st-augustines',
+      'story-10-the-whispering-forest'
+    ],
+    favoriteStoryIds: ['story-1-anatomy-of-the-dead', 'story-2-five-spirits-from-the-east', 'story-10-the-whispering-forest'],
+    followingAuthorIds: ['auth-jephthah-ozero', 'auth-amara-nwosu', 'auth-kwame-boateng'],
+    bookmarks: [],
+    readingProgress: {},
+    totalReadingMinutes: 1200,
+    booksCompletedCount: 10,
+    createdAt: '2024-01-01T08:00:00Z',
+    lastActiveAt: 'Just now'
+  },
+  {
     id: 'usr-admin-ozero',
     email: 'ozerojephtah0@gmail.com',
     fullName: 'Jephthah Ozero',

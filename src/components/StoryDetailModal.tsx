@@ -95,6 +95,26 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
     }
   };
 
+  const isLiked = Boolean(isStoryLiked?.(story.id));
+
+  const handleToggleLike = async () => {
+    if (!isAuthenticated) {
+      if (openAuthModal) openAuthModal('signin');
+      return;
+    }
+    if (toggleLikeStory) {
+      await toggleLikeStory(story.id);
+    }
+  };
+
+  const handleOpenCollections = () => {
+    if (!isAuthenticated) {
+      if (openAuthModal) openAuthModal('signin');
+      return;
+    }
+    setIsCollectionsModalOpen(true);
+  };
+
   return (
     <>
       <div
@@ -166,21 +186,21 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
                     <button
                       type="button"
                       id="story-detail-like-btn"
-                      onClick={() => toggleLikeStory(story.id)}
+                      onClick={handleToggleLike}
                       className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border cursor-pointer ${
-                        isStoryLiked(story.id)
+                        isLiked
                           ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 border-rose-200 dark:border-rose-900/60'
                           : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                       }`}
                     >
-                      <Heart className={`w-3.5 h-3.5 ${isStoryLiked(story.id) ? 'fill-rose-500 text-rose-500' : ''}`} />
-                      <span>{isStoryLiked(story.id) ? 'Liked' : 'Like'}</span>
+                      <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-500 text-rose-500' : ''}`} />
+                      <span>{isLiked ? 'Liked' : 'Like'}</span>
                     </button>
 
                     <button
                       type="button"
                       id="story-detail-collect-btn"
-                      onClick={() => setIsCollectionsModalOpen(true)}
+                      onClick={handleOpenCollections}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                     >
                       <FolderPlus className="w-3.5 h-3.5 text-amber-500" />

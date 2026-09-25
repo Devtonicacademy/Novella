@@ -1,0 +1,13 @@
+{
+  "auth": {
+    "authorizedDomains": [
+      "localhost",
+      "novella-app-2026.firebaseapp.com",
+      "novella-app-2026.web.app"
+    ],
+    "providers": {
+      "anonymous": true,
+      "emailPassword": true
+    }
+  }
+}
