@@ -259,7 +259,7 @@ function AppContent() {
               Novella
             </span>
             <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
-              v1.0.0
+              v1.1.0
             </span>
             <span>·</span>
             <span>First 2 Books Guaranteed Free For All Readers</span>

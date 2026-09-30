@@ -261,7 +261,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>Gateway Online</span>
             </span>
-            <span className="font-mono text-[10px]">v1.4.0</span>
+            <span className="font-mono text-[10px]">v1.1.0</span>
           </div>
         </div>
       </aside>
