@@ -252,11 +252,14 @@ function AppContent() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-200 dark:border-zinc-800/80 py-8 px-4 sm:px-6 lg:px-8 text-center text-xs text-zinc-500 dark:text-zinc-400 select-none">
+      <footer className="border-t border-zinc-200 dark:border-zinc-800/80 py-8 px-4 sm:px-6 lg:px-8 text-center text-xs text-zinc-500 dark:text-zinc-400 select-none pb-24 md:pb-8">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
             <span className="font-serif font-bold text-sm text-zinc-900 dark:text-zinc-100">
               Novella
+            </span>
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+              v1.0.0
             </span>
             <span>·</span>
             <span>First 2 Books Guaranteed Free For All Readers</span>
