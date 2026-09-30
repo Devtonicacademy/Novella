@@ -2,8 +2,6 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import path from 'path';
 import crypto from 'crypto';
-import { fileURLToPath } from 'url';
-import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { INITIAL_STORIES } from './src/data/initialStories';
 import {
@@ -46,11 +44,8 @@ import {
   ActivityFeedItem
 } from './src/types';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(cors());
 app.use(express.json({
@@ -2627,6 +2622,8 @@ app.get('/api/analytics', requireAdmin, (req: AuthenticatedRequest, res: Respons
 // -------------------------------------------------------------
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    const vitePkg = 'vite';
+    const { createServer: createViteServer } = await import(vitePkg);
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -2645,7 +2642,15 @@ async function startServer() {
   });
 }
 
-if (!process.env.VERCEL && !process.env.NOW_REGION) {
+const isDirectRun = Boolean(
+  process.argv[1] && (
+    process.argv[1].endsWith('server.ts') || 
+    process.argv[1].endsWith('server.cjs') || 
+    process.argv[1].endsWith('server.js')
+  )
+);
+
+if (isDirectRun && !process.env.VERCEL && !process.env.NOW_REGION) {
   startServer();
 }
 
