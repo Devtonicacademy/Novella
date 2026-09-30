@@ -45,7 +45,7 @@ export const ActivityFeedModal: React.FC<ActivityFeedModalProps> = ({
           {
             id: 'feed-1',
             type: 'chapter_release',
-            actorName: 'Jephthah Ozero',
+            actorName: 'Doughlas Iyanu',
             actorAvatar: '',
             storyId: 'story-1',
             storyTitle: 'Echoes of the Niger',

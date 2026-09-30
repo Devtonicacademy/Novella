@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { GoogleAccountChooserModal } from './GoogleAccountChooserModal';
 import { X, BookOpen, User, Mail, Lock, Shield, Sparkles, KeyRound, AlertCircle, CheckCircle2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 interface AuthModalProps {
@@ -17,7 +16,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const { signInWithEmail, signUpWithEmail, adminSignIn, googleSignIn, requestPasswordReset, resetPassword } = useAuth();
   
   const [mode, setMode] = useState<'signin' | 'signup' | 'admin' | 'forgot' | 'reset'>(initialMode);
-  const [isGoogleChooserOpen, setIsGoogleChooserOpen] = useState(false);
   
   // Form fields
   const [fullName, setFullName] = useState('');
@@ -150,28 +148,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleGoogleClick = () => {
-    setErrorMessage(null);
-    setIsGoogleChooserOpen(true);
-  };
-
-  const handleSelectGoogleAccount = async (account: { email: string; name: string; avatar: string }) => {
+  const handleGoogleClick = async () => {
     setErrorMessage(null);
     setLoading(true);
     try {
-      await googleSignIn(account.email, account.name, account.avatar);
-      setIsGoogleChooserOpen(false);
+      await googleSignIn();
       onClose();
     } catch (err: any) {
-      setErrorMessage(err.message || 'Google authentication failed.');
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        // User closed the popup window
+      } else {
+        setErrorMessage(err.message || 'Google authentication failed.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <>
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
         <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden max-h-[92dvh] sm:max-h-[90vh] flex flex-col pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
           {/* Mobile drag handle */}
           <div className="sm:hidden pt-2.5 pb-1 flex justify-center shrink-0">
@@ -509,14 +504,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         </div>
       </div>
-      </div>
-
-      {/* Google Account Selector Dialog */}
-      <GoogleAccountChooserModal
-        isOpen={isGoogleChooserOpen}
-        onClose={() => setIsGoogleChooserOpen(false)}
-        onSelectAccount={handleSelectGoogleAccount}
-      />
-    </>
+    </div>
   );
 };

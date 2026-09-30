@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Story } from '../types';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { X, ShieldCheck, CreditCard, Building, Smartphone, CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { X, ShieldCheck, CheckCircle, ArrowRight, Loader2, Lock, ExternalLink, Sparkles, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface PaystackModalProps {
@@ -18,27 +18,25 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { user, unlockStory } = useAuth();
-  const [email, setEmail] = useState(user?.email || 'reader@storyflow.app');
-  const [paymentChannel, setPaymentChannel] = useState<'card' | 'bank' | 'ussd'>('card');
-  const [cardNumber, setCardNumber] = useState('4084 0840 8408 4084');
-  const [cardExpiry, setCardExpiry] = useState('12/28');
-  const [cardCvv, setCardCvv] = useState('381');
-  const [bankSelected, setBankSelected] = useState('Guaranty Trust Bank (GTBank)');
-  const [ussdCode, setUssdCode] = useState('*737*1*2500#');
-
+  const { user, unlockStory, refreshUser } = useAuth();
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [publicKey, setPublicKey] = useState<string>('');
+  const [isLiveMode, setIsLiveMode] = useState<boolean>(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     api.getPaystackPublicKey().then((key) => {
-      if (key) setPublicKey(key);
+      if (key && !key.includes('sample') && !key.includes('placeholder')) {
+        setPublicKey(key);
+        setIsLiveMode(true);
+      } else if (key) {
+        setPublicKey(key);
+      }
     });
   }, []);
 
-  if (!isOpen) return null;
+  if (!isOpen || !user) return null;
 
   const handleProcessPayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,48 +44,53 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
     setErrorMessage(null);
 
     try {
-      // 1. Initialize session on backend with metadata & project prefix
-      const initRes = await api.initializePayment(email, story.id, story.priceNGN);
+      // 1. Initialize session on backend with metadata & authenticated user
+      const payerEmail = user.email.toLowerCase().trim();
+      const initRes = await api.initializePayment(payerEmail, story.id, story.priceNGN);
       const reference = initRes?.reference || initRes?.data?.reference || `NOV_${Date.now()}`;
       const accessCode = initRes?.data?.access_code || '';
       const authUrl = initRes?.data?.authorization_url || '';
 
-      const isLiveCheckout = Boolean(
+      const isLivePopReady = Boolean(
         publicKey && 
         accessCode && 
         !accessCode.startsWith('mock_') && 
         authUrl && 
-        !authUrl.includes('sandbox_')
+        !authUrl.includes('sandbox_') &&
+        typeof (window as any).PaystackPop !== 'undefined'
       );
 
       // If live Paystack keys are present and PaystackPop is loaded, launch official Paystack Popup
-      if (isLiveCheckout && typeof (window as any).PaystackPop !== 'undefined') {
+      if (isLivePopReady) {
         const handler = (window as any).PaystackPop.setup({
           key: publicKey,
-          email: email.trim(),
+          email: payerEmail,
           amount: Math.round(story.priceNGN * 100),
           ref: reference,
           metadata: {
             storyId: story.id,
             storyTitle: story.title,
+            customerEmail: payerEmail,
             custom_fields: [
               { display_name: 'Project', variable_name: 'project_name', value: 'Novella Stories' },
               { display_name: 'Book Title', variable_name: 'story_title', value: story.title },
+              { display_name: 'Reader Email', variable_name: 'reader_email', value: payerEmail },
             ],
           },
           callback: async (response: any) => {
             const verifiedRef = response.reference || reference;
             try {
-              const verifyRes = await api.verifyPayment(verifiedRef, email, story.id);
+              const verifyRes = await api.verifyPayment(verifiedRef, payerEmail, story.id);
               if (verifyRes.status) {
-                unlockStory(story.id);
+                await unlockStory(story.id);
+                await refreshUser();
                 setSuccess(true);
                 try {
-                  confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+                  confetti({ particleCount: 90, spread: 75, origin: { y: 0.6 } });
                 } catch {}
                 setTimeout(() => onSuccess(), 1800);
               } else {
-                setErrorMessage('Payment verification unconfirmed. Please contact support.');
+                setErrorMessage('Payment verification unconfirmed by Paystack. Please contact support.');
               }
             } catch (vErr: any) {
               setErrorMessage(vErr.message || 'Payment verification failed');
@@ -104,13 +107,14 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
         return;
       }
 
-      // High-craft sandbox execution (when testing without live keys or offline)
-      await new Promise((resolve) => setTimeout(resolve, 1400));
+      // Sandbox / Test Mode verification
+      await new Promise((resolve) => setTimeout(resolve, 1200));
 
-      const verifyRes = await api.verifyPayment(reference, email, story.id);
+      const verifyRes = await api.verifyPayment(reference, payerEmail, story.id);
 
       if (verifyRes.status) {
-        unlockStory(story.id);
+        await unlockStory(story.id);
+        await refreshUser();
         setSuccess(true);
         try {
           confetti({
@@ -123,7 +127,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
           onSuccess();
         }, 1800);
       } else {
-        setErrorMessage('Payment failed. Please try again.');
+        setErrorMessage('Payment verification failed. Please try again.');
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error processing payment';
@@ -150,11 +154,13 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
             <div>
               <div className="flex items-center gap-1.5 text-xs font-bold tracking-tight">
                 <span>Paystack Checkout</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono">
-                  SECURE
+                <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
+                  isLiveMode ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
+                }`}>
+                  {isLiveMode ? 'LIVE GATEWAY' : 'TEST SANDBOX'}
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400">StoryFlow Official Merchant</p>
+              <p className="text-[11px] text-zinc-400">Novella Official Merchant</p>
             </div>
           </div>
 
@@ -177,7 +183,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
                 Payment Successful!
               </h3>
               <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 max-w-sm mx-auto font-reading">
-                <strong>{story.title}</strong> has been permanently unlocked and added to your personal library.
+                <strong>{story.title}</strong> has been permanently unlocked and bound to <strong>{user.email}</strong>.
               </p>
               <div className="inline-flex items-center gap-2 text-xs font-bold text-amber-700 dark:text-amber-400">
                 <span>Opening Story Reader...</span>
@@ -201,159 +207,50 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
                     ₦{story.priceNGN.toLocaleString()} NGN
                   </span>
                   <span className="text-[10px] text-zinc-400 block tabular-nums">
-                    ${story.priceUSD.toFixed(2)} USD
+                    ${(story.priceUSD || 2.99).toFixed(2)} USD
                   </span>
                 </div>
               </div>
 
-              {/* Payment Channel Tabs */}
-              <div>
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-2">
-                  Select Payment Method
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentChannel('card')}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1 transition-all cursor-pointer ${
-                      paymentChannel === 'card'
-                        ? 'border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 ring-2 ring-emerald-600/20'
-                        : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                    }`}
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    <span>Card</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentChannel('bank')}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1 transition-all cursor-pointer ${
-                      paymentChannel === 'bank'
-                        ? 'border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 ring-2 ring-emerald-600/20'
-                        : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                    }`}
-                  >
-                    <Building className="w-4 h-4" />
-                    <span>Bank Transfer</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentChannel('ussd')}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1 transition-all cursor-pointer ${
-                      paymentChannel === 'ussd'
-                        ? 'border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 ring-2 ring-emerald-600/20'
-                        : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                    }`}
-                  >
-                    <Smartphone className="w-4 h-4" />
-                    <span>USSD</span>
-                  </button>
+              {/* Reader Account Verification */}
+              <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700 space-y-1">
+                <div className="text-[11px] text-zinc-500 flex items-center justify-between">
+                  <span>Linked Reader Account:</span>
+                  <span className="font-mono text-zinc-800 dark:text-zinc-200 font-semibold">{user.email}</span>
                 </div>
+                <p className="text-[10px] text-zinc-400">
+                  Payment receipt & lifetime book access will be permanently stored on this account.
+                </p>
               </div>
 
-              {/* Reader Email */}
-              <div>
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-                  Reader Email Receipt
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your.email@domain.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-base sm:text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-600/50"
-                />
-              </div>
-
-              {/* Dynamic Channel Fields */}
-              {paymentChannel === 'card' && (
-                <div className="space-y-3 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700">
-                  <div>
-                    <label className="text-[11px] font-semibold text-zinc-500 uppercase block mb-1">
-                      Card Number
-                    </label>
-                    <input
-                      type="text"
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                      placeholder="4084 0840 8408 4084"
-                      className="w-full px-3 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-base sm:text-xs font-mono"
-                    />
+              {/* Gateway Mode Description */}
+              {!isLiveMode ? (
+                <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 space-y-1 text-left">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-300">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Paystack Test Environment</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[11px] font-semibold text-zinc-500 uppercase block mb-1">
-                        Expires
-                      </label>
-                      <input
-                        type="text"
-                        value={cardExpiry}
-                        onChange={(e) => setCardExpiry(e.target.value)}
-                        placeholder="MM/YY"
-                        className="w-full px-3 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-base sm:text-xs font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-zinc-500 uppercase block mb-1">
-                        CVV
-                      </label>
-                      <input
-                        type="password"
-                        value={cardCvv}
-                        onChange={(e) => setCardCvv(e.target.value)}
-                        placeholder="123"
-                        maxLength={4}
-                        className="w-full px-3 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-base sm:text-xs font-mono"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {paymentChannel === 'bank' && (
-                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700 space-y-3 text-xs">
-                  <div>
-                    <label className="text-[11px] font-semibold text-zinc-500 uppercase block mb-1">
-                      Choose Your Bank
-                    </label>
-                    <select
-                      value={bankSelected}
-                      onChange={(e) => setBankSelected(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-base sm:text-xs"
-                    >
-                      <option>Guaranty Trust Bank (GTBank)</option>
-                      <option>Access Bank Plc</option>
-                      <option>Zenith Bank Plc</option>
-                      <option>First Bank of Nigeria</option>
-                      <option>United Bank for Africa (UBA)</option>
-                      <option>Kuda Microfinance Bank</option>
-                    </select>
-                  </div>
-                  <p className="text-[11px] text-zinc-500">
-                    A secure virtual account number will be generated for your instant bank transfer.
+                  <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 leading-relaxed">
+                    You are in test sandbox mode. In live production with your merchant keys configured in Settings, readers are redirected to the official Paystack gateway to pay with real Cards, USSD, or Bank Transfers.
                   </p>
                 </div>
-              )}
-
-              {paymentChannel === 'ussd' && (
-                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700 space-y-2 text-xs">
-                  <p className="font-semibold text-zinc-700 dark:text-zinc-300">
-                    Dial this code on your mobile phone:
-                  </p>
-                  <div className="p-3 bg-zinc-900 text-amber-400 font-mono text-center rounded-xl text-sm font-bold tracking-widest">
-                    {ussdCode}
+              ) : (
+                <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 space-y-1 text-left">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900 dark:text-emerald-300">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Official Paystack Live Popup</span>
                   </div>
-                  <p className="text-[11px] text-zinc-500">
-                    Follow the prompt on your phone and press the Confirm button below.
+                  <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 leading-relaxed">
+                    Clicking below will securely open the Paystack payment gateway overlay.
                   </p>
                 </div>
               )}
 
               {errorMessage && (
-                <p className="text-xs text-red-600 dark:text-red-400">{errorMessage}</p>
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 flex items-center gap-2 text-xs text-red-700 dark:text-red-300">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
               )}
 
               {/* Submit Button */}
@@ -369,8 +266,10 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
                   </>
                 ) : (
                   <>
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Pay ₦{story.priceNGN.toLocaleString()} Now</span>
+                    <Lock className="w-4 h-4" />
+                    <span>
+                      {isLiveMode ? `Launch Paystack (₦${story.priceNGN.toLocaleString()})` : `Complete Test Payment (₦${story.priceNGN.toLocaleString()})`}
+                    </span>
                   </>
                 )}
               </button>
@@ -379,6 +278,8 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
                 <span>256-bit SSL encrypted</span>
                 <span>·</span>
                 <span>PCI-DSS Level 1 Certified</span>
+                <span>·</span>
+                <span>Paystack Gateway</span>
               </div>
             </form>
           )}

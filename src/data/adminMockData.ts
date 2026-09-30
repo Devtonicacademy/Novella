@@ -16,9 +16,9 @@ import {
 
 export const INITIAL_AUTHORS: Author[] = [
   {
-    id: 'auth-jephthah-ozero',
-    name: 'Jephthah Ozero',
-    bio: 'Acclaimed Nigerian poet, satirist, and essayist known for searing political allegories, visceral social critiques, and soulful memoirs of African musical heritage.',
+    id: 'auth-doughlas-iyanu',
+    name: 'Doughlas Iyanu',
+    bio: 'Acclaimed Nigerian author, poet, satirist, and essayist known for searing political allegories, visceral social critiques, and soulful memoirs of African musical heritage.',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     bannerImage: 'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?w=1200&auto=format&fit=crop&q=80',
     nationality: 'Nigerian',
@@ -30,12 +30,16 @@ export const INITIAL_AUTHORS: Author[] = [
       'story-3-gods-will',
       'story-4-lets-pray-for-cameroon',
       'story-5-retired-general-bonzai',
-      'story-6-the-ugly-owl'
+      'story-6-the-ugly-owl',
+      'story-7-echoes-of-the-savanna',
+      'story-8-the-secret-of-zuma-rock',
+      'story-9-trials-of-st-augustines',
+      'story-10-the-whispering-forest'
     ],
-    totalStories: 6,
-    totalReads: 32450,
-    totalRevenueNGN: 685000,
-    followersCount: 1420,
+    totalStories: 10,
+    totalReads: 75550,
+    totalRevenueNGN: 1195000,
+    followersCount: 3150,
     averageRating: 4.9,
     awards: ['Pan-African Verse Prize', 'National Satirist Guild Award', 'Writers of the Delta Fellowship'],
     status: 'active',
@@ -43,8 +47,8 @@ export const INITIAL_AUTHORS: Author[] = [
     verified: true,
     featured: true,
     socialLinks: {
-      twitter: 'https://twitter.com/ozero_verse',
-      instagram: 'https://instagram.com/jephthah_novella'
+      twitter: 'https://twitter.com/doughlas_iyanu',
+      instagram: 'https://instagram.com/doughlas_iyanu'
     }
   },
   {
@@ -260,43 +264,13 @@ export const INITIAL_ADMIN_USERS: UserProfile[] = [
       'story-10-the-whispering-forest'
     ],
     favoriteStoryIds: ['story-1-anatomy-of-the-dead', 'story-2-five-spirits-from-the-east'],
-    followingAuthorIds: ['auth-jephthah-ozero', 'auth-amara-nwosu', 'auth-kwame-boateng'],
+    followingAuthorIds: ['auth-doughlas-iyanu', 'auth-amara-nwosu', 'auth-kwame-boateng'],
     bookmarks: [],
     readingProgress: {},
     totalReadingMinutes: 2400,
     booksCompletedCount: 10,
     createdAt: '2024-01-01T08:00:00Z',
     lastActiveAt: 'Just now'
-  },
-  {
-    id: 'usr-admin-staff',
-    email: 'staff.admin@novella.app',
-    fullName: 'Platform Operations Admin',
-    displayName: 'Staff Admin',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
-    bio: 'Platform Operations & Editorial Administrator.',
-    role: 'admin',
-    status: 'active',
-    unlockedStoryIds: [
-      'story-1-anatomy-of-the-dead',
-      'story-2-five-spirits-from-the-east',
-      'story-3-gods-will',
-      'story-4-lets-pray-for-cameroon',
-      'story-5-retired-general-bonzai',
-      'story-6-the-ugly-owl',
-      'story-7-echoes-of-the-savanna',
-      'story-8-the-secret-of-zuma-rock',
-      'story-9-trials-of-st-augustines',
-      'story-10-the-whispering-forest'
-    ],
-    favoriteStoryIds: [],
-    followingAuthorIds: [],
-    bookmarks: [],
-    readingProgress: {},
-    totalReadingMinutes: 890,
-    booksCompletedCount: 5,
-    createdAt: '2024-01-10T08:00:00Z',
-    lastActiveAt: '1 hour ago'
   },
   {
     id: 'usr-admin-devtonic',
@@ -320,7 +294,7 @@ export const INITIAL_ADMIN_USERS: UserProfile[] = [
       'story-10-the-whispering-forest'
     ],
     favoriteStoryIds: ['story-1-anatomy-of-the-dead', 'story-2-five-spirits-from-the-east', 'story-10-the-whispering-forest'],
-    followingAuthorIds: ['auth-jephthah-ozero', 'auth-amara-nwosu', 'auth-kwame-boateng'],
+    followingAuthorIds: ['auth-doughlas-iyanu', 'auth-amara-nwosu', 'auth-kwame-boateng'],
     bookmarks: [],
     readingProgress: {},
     totalReadingMinutes: 1200,
@@ -331,8 +305,8 @@ export const INITIAL_ADMIN_USERS: UserProfile[] = [
   {
     id: 'usr-admin-ozero',
     email: 'ozerojephtah0@gmail.com',
-    fullName: 'Jephthah Ozero',
-    displayName: 'Jephthah Ozero',
+    fullName: 'Doughlas Iyanu',
+    displayName: 'Doughlas Iyanu',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     bio: 'Lead Author & Super Administrator of Novella.',
     role: 'super_admin',
@@ -350,91 +324,13 @@ export const INITIAL_ADMIN_USERS: UserProfile[] = [
       'story-10-the-whispering-forest'
     ],
     favoriteStoryIds: ['story-1-anatomy-of-the-dead', 'story-2-five-spirits-from-the-east', 'story-10-the-whispering-forest'],
-    followingAuthorIds: ['auth-jephthah-ozero', 'auth-amara-nwosu', 'auth-kwame-boateng'],
+    followingAuthorIds: ['auth-doughlas-iyanu', 'auth-amara-nwosu', 'auth-kwame-boateng'],
     bookmarks: [],
     readingProgress: {},
     totalReadingMinutes: 840,
     booksCompletedCount: 6,
     createdAt: '2024-01-01T08:00:00Z',
     lastActiveAt: 'Just now'
-  },
-  {
-    id: 'usr-author-amara',
-    email: 'amara.nwosu@novella.app',
-    fullName: 'Amara Nwosu',
-    displayName: 'Amara Nwosu (Author)',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    bio: 'Contemporary fiction writer exploring African mythology and romance.',
-    role: 'author',
-    status: 'active',
-    unlockedStoryIds: ['story-1-anatomy-of-the-dead', 'story-2-five-spirits-from-the-east', 'story-7-echoes-of-the-savanna'],
-    favoriteStoryIds: ['story-2-five-spirits-from-the-east'],
-    followingAuthorIds: ['auth-jephthah-ozero'],
-    bookmarks: [],
-    readingProgress: {},
-    totalReadingMinutes: 450,
-    booksCompletedCount: 3,
-    createdAt: '2024-01-15T08:00:00Z',
-    lastActiveAt: '2 hours ago'
-  },
-  {
-    id: 'usr-reader-chidi',
-    email: 'customer@novella.app',
-    fullName: 'Amara Okafor',
-    displayName: 'Amara Okafor',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-    bio: 'Avid reader and lover of African folklore & satire.',
-    role: 'customer',
-    status: 'active',
-    unlockedStoryIds: [
-      'story-1-anatomy-of-the-dead',
-      'story-2-five-spirits-from-the-east',
-      'story-3-gods-will'
-    ],
-    favoriteStoryIds: ['story-3-gods-will', 'story-2-five-spirits-from-the-east'],
-    followingAuthorIds: ['auth-jephthah-ozero'],
-    bookmarks: [
-      {
-        id: 'bm-seed-1',
-        storyId: 'story-3-gods-will',
-        chapterId: 'ch-3-1',
-        chapterOrder: 1,
-        chapterTitle: "God's Will",
-        paragraphIndex: 1,
-        note: 'Profound and rhythmic social verse!',
-        createdAt: '2024-03-10T14:30:00Z'
-      }
-    ],
-    readingProgress: {
-      'story-1-anatomy-of-the-dead': {
-        storyId: 'story-1-anatomy-of-the-dead',
-        currentChapterId: 'ch-1-1',
-        currentChapterOrder: 1,
-        percentage: 100,
-        lastReadAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-        totalMinutesSpent: 6
-      },
-      'story-3-gods-will': {
-        storyId: 'story-3-gods-will',
-        currentChapterId: 'ch-3-1',
-        currentChapterOrder: 1,
-        percentage: 65,
-        lastReadAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-        totalMinutesSpent: 4
-      },
-      'story-10-the-whispering-forest': {
-        storyId: 'story-10-the-whispering-forest',
-        currentChapterId: 'ch-10-1',
-        currentChapterOrder: 1,
-        percentage: 45,
-        lastReadAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-        totalMinutesSpent: 8
-      }
-    },
-    totalReadingMinutes: 125,
-    booksCompletedCount: 1,
-    createdAt: '2024-02-01T08:00:00Z',
-    lastActiveAt: '10 minutes ago'
   }
 ];
 
@@ -507,7 +403,7 @@ export const INITIAL_COMMENTS: Comment[] = [
         commentId: 'comm-1',
         userId: 'usr-admin-ozero',
         userEmail: 'ozerojephtah0@gmail.com',
-        userName: 'Jephthah Ozero',
+        userName: 'Doughlas Iyanu',
         userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
         userRole: 'author',
         content: 'Thank you Amara. Literature must remain the mirror and shield of the conscience.',
@@ -539,10 +435,10 @@ export const INITIAL_NOTIFICATIONS: AppNotification[] = [
   {
     id: 'notif-1',
     title: 'New Story Release',
-    message: 'Jephthah Ozero just published a new interactive adventure: "The Whispering Forest". Explore branching paths now!',
+    message: 'Doughlas Iyanu just published a new interactive adventure: "The Whispering Forest". Explore branching paths now!',
     type: 'new_story',
     storyId: 'story-10-the-whispering-forest',
-    authorId: 'auth-jephthah-ozero',
+    authorId: 'auth-doughlas-iyanu',
     read: false,
     createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
@@ -550,7 +446,7 @@ export const INITIAL_NOTIFICATIONS: AppNotification[] = [
   {
     id: 'notif-2',
     title: 'Author Replied',
-    message: 'Jephthah Ozero replied to your comment on "Anatomy of the Dead".',
+    message: 'Doughlas Iyanu replied to your comment on "Anatomy of the Dead".',
     type: 'comment',
     storyId: 'story-1-anatomy-of-the-dead',
     chapterId: 'ch-1-1',
@@ -585,8 +481,8 @@ export const INITIAL_REPORTS: ContentReport[] = [
 ];
 
 export const INITIAL_AUTHOR_EARNINGS: AuthorEarnings = {
-  authorId: 'auth-jephthah-ozero',
-  authorName: 'Jephthah Ozero',
+  authorId: 'auth-doughlas-iyanu',
+  authorName: 'Doughlas Iyanu',
   totalRevenueNGN: 685000,
   authorSplitNGN: 479500, // 70%
   platformCommissionNGN: 205500, // 30%

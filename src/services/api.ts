@@ -738,7 +738,7 @@ export const api = {
   }> {
     const res = await fetch(`${API_BASE}/paystack/initialize`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ email, storyId, amountNGN }),
     });
 

@@ -3,7 +3,7 @@ import { Story } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { BookCover } from './BookCover';
 import { PaystackModal } from './PaystackModal';
-import { X, Lock, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Lock, ShieldCheck, CheckCircle2, AlertCircle, LogIn, UserCheck } from 'lucide-react';
 
 interface UnlockModalProps {
   story: Story | null;
@@ -28,6 +28,15 @@ export const UnlockModal: React.FC<UnlockModalProps> = ({
   const handlePaystackSuccess = () => {
     setShowPaystackCheckout(false);
     onUnlocked(story);
+  };
+
+  const handleProceedToPayment = () => {
+    if (!user) {
+      onClose();
+      onOpenAuth();
+      return;
+    }
+    setShowPaystackCheckout(true);
   };
 
   return (
@@ -78,7 +87,7 @@ export const UnlockModal: React.FC<UnlockModalProps> = ({
                   ₦{story.priceNGN.toLocaleString()} NGN
                 </span>
                 <span className="text-xs text-zinc-500 tabular-nums">
-                  (${(story.priceUSD || 2.99).toFixed(2)} USD)
+                  (${ (story.priceUSD || 2.99).toFixed(2) } USD)
                 </span>
               </div>
             </div>
@@ -99,14 +108,48 @@ export const UnlockModal: React.FC<UnlockModalProps> = ({
               </div>
             </div>
 
-            {/* Paystack Action Button */}
-            <button
-              onClick={() => setShowPaystackCheckout(true)}
-              className="w-full py-3.5 px-4 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
-            >
-              <Lock className="w-4 h-4" />
-              <span>Pay ₦{story.priceNGN.toLocaleString()} with Paystack</span>
-            </button>
+            {/* Auth Gate vs Paystack Action Button */}
+            {!user ? (
+              <div className="space-y-3 pt-1">
+                <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-left space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-300">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Account Required to Unlock</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800/80 dark:text-amber-400/80 leading-relaxed">
+                    Please sign in or create an account so this manuscript is permanently linked to your personal library across all your devices.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleProceedToPayment}
+                  className="w-full py-3.5 px-4 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Sign In / Create Account to Pay</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between text-[11px] text-zinc-500 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                  <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Purchasing as:</span>
+                  </span>
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate max-w-[200px]">
+                    {user.email}
+                  </span>
+                </div>
+
+                <button
+                  onClick={handleProceedToPayment}
+                  className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                >
+                  <Lock className="w-4 h-4" />
+                  <span>Pay ₦{story.priceNGN.toLocaleString()} with Paystack</span>
+                </button>
+              </div>
+            )}
 
             {/* Security Badge */}
             <div className="flex items-center justify-center gap-2 text-[11px] text-zinc-400 pt-1">
@@ -118,7 +161,7 @@ export const UnlockModal: React.FC<UnlockModalProps> = ({
       </div>
 
       {/* Paystack Interactive Payment Modal */}
-      {showPaystackCheckout && (
+      {showPaystackCheckout && user && (
         <PaystackModal
           story={story}
           isOpen={showPaystackCheckout}

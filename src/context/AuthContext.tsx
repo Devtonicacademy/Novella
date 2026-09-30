@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { UserProfile, UserBookmark, Story, AdminRole, ReadingStreak, ReadingGoals, StoryCollection, ReaderAchievement, RecentlyViewedItem } from '../types';
 import { api, setStoredAuthToken } from '../services/api';
-import { firebaseSignIn, firebaseSignUp, firebaseSignOutUser, firebaseSendPasswordReset } from '../services/firebase';
+import { firebaseSignIn, firebaseSignUp, firebaseSignOutUser, firebaseSendPasswordReset, firebaseGoogleSignIn } from '../services/firebase';
 
 const DEFAULT_ACHIEVEMENTS: ReaderAchievement[] = [
   {
@@ -566,11 +566,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const googleSignIn = async (
-    email: string = 'reader@novella.app',
-    name: string = 'Novella Reader',
+    email?: string,
+    name?: string,
     avatar?: string
   ): Promise<UserProfile> => {
-    const response = await api.googleAuth(email, name, avatar);
+    let authEmail = email;
+    let authName = name;
+    let authAvatar = avatar;
+
+    if (!authEmail) {
+      const credential = await firebaseGoogleSignIn();
+      const fbUser = credential.user;
+      authEmail = fbUser.email || '';
+      authName = fbUser.displayName || authEmail.split('@')[0] || 'Novella Reader';
+      authAvatar = fbUser.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(authName)}`;
+    }
+
+    const response = await api.googleAuth(authEmail, authName || 'Novella Reader', authAvatar);
     setToken(response.token);
     setUser({
       ...response.user,

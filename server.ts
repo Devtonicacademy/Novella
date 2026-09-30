@@ -1079,7 +1079,7 @@ let activityFeed: ActivityFeedItem[] = [
   {
     id: 'act-2',
     authorId: 'auth-2',
-    authorName: 'Jephthah Ozero',
+    authorName: 'Doughlas Iyanu',
     authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     type: 'new_chapter',
     title: 'Chapter 2 Published: The Genesis of the Oriental Brothers',
@@ -1878,20 +1878,45 @@ app.post('/api/author-portal/payout', requireAuth, (req: AuthenticatedRequest, r
 app.post('/api/stories', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
 
-  const { title, subtitle, category, description, synopsis, chapters, isFree, priceNGN, isInteractive, coverImage, coverColorTheme } = req.body;
+  const {
+    title,
+    subtitle,
+    author,
+    authorId,
+    authorBio,
+    authorAvatar,
+    category,
+    description,
+    synopsis,
+    chapters,
+    isFree,
+    priceNGN,
+    isInteractive,
+    coverImage,
+    coverColorTheme,
+    publishedYear,
+    createdAt,
+    tags
+  } = req.body;
 
   if (!title || !description) {
     return res.status(400).json({ error: 'Story title and description are required' });
   }
 
+  const parsedTags = Array.isArray(tags)
+    ? tags
+    : typeof tags === 'string'
+    ? tags.split(',').map((t: string) => t.trim()).filter(Boolean)
+    : [category || 'African Stories', 'New Release'];
+
   const newStory: Story = {
     id: `story-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
     title,
     subtitle: subtitle || '',
-    author: req.user.displayName || req.user.fullName || 'Novella Creator',
-    authorId: req.user.id,
-    authorBio: req.user.bio || 'Novella storyteller.',
-    authorAvatar: req.user.avatar,
+    author: author || req.user.displayName || req.user.fullName || 'Doughlas Iyanu',
+    authorId: authorId || req.user.id || 'auth-doughlas-iyanu',
+    authorBio: authorBio || req.user.bio || 'Acclaimed Nigerian author, poet, satirist, and essayist.',
+    authorAvatar: authorAvatar || req.user.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     category: category || 'African Stories',
     description,
     synopsis: synopsis || description,
@@ -1902,8 +1927,9 @@ app.post('/api/stories', requireAuth, (req: AuthenticatedRequest, res: Response)
     reviewCount: 0,
     totalChapters: chapters?.length || 1,
     readTime: `${(chapters?.length || 1) * 4} min`,
-    tags: [category || 'African Stories', 'New Release'],
-    publishedYear: new Date().getFullYear(),
+    tags: parsedTags,
+    publishedYear: publishedYear ? Number(publishedYear) : new Date().getFullYear(),
+    createdAt: createdAt || new Date().toISOString(),
     status: 'published',
     isInteractive: Boolean(isInteractive),
     coverImage: coverImage || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
@@ -1980,9 +2006,17 @@ app.put('/api/stories/:id', requireAuth, (req: AuthenticatedRequest, res: Respon
     ? Number(req.body.priceUSD) 
     : (isFree ? 0 : Number((priceNGN / 1450).toFixed(2)));
 
+  let parsedTags = req.body.tags !== undefined ? req.body.tags : existing.tags;
+  if (typeof parsedTags === 'string') {
+    parsedTags = parsedTags.split(',').map((t: string) => t.trim()).filter(Boolean);
+  }
+
   const updatedStory: Story = {
     ...existing,
     ...req.body,
+    tags: parsedTags,
+    publishedYear: req.body.publishedYear !== undefined ? Number(req.body.publishedYear) : existing.publishedYear,
+    createdAt: req.body.createdAt || existing.createdAt || new Date().toISOString(),
     isFree,
     priceNGN,
     priceUSD,
@@ -2104,7 +2138,10 @@ app.post('/api/paystack/initialize', optionalAuth, async (req: AuthenticatedRequ
       return res.status(404).json({ error: 'Story not found' });
     }
 
-    const payerEmail = (email || req.user?.email || 'reader@novella.app').toLowerCase().trim();
+    const payerEmail = (req.user?.email || email || '').toLowerCase().trim();
+    if (!payerEmail) {
+      return res.status(401).json({ error: 'Authentication required. Please sign in to purchase and unlock this story.' });
+    }
     const finalAmountNGN = Math.max(Number(amountNGN) || story.priceNGN || 2000, 100);
     const amountKobo = Math.round(finalAmountNGN * 100);
 
@@ -2213,7 +2250,7 @@ async function verifyAndFulfillPayment(req: AuthenticatedRequest, res: Response)
     let verifiedAmountNGN = Number(amountNGN) || 2000;
     let verifiedPaidAt = new Date().toISOString();
     let resolvedStoryId = storyId;
-    let resolvedEmail = (email || userEmail || req.user?.email || 'reader@novella.app').toLowerCase().trim();
+    let resolvedEmail = (req.user?.email || email || userEmail || 'reader@novella.app').toLowerCase().trim();
 
     if (secretKey) {
       try {
@@ -2266,9 +2303,15 @@ async function verifyAndFulfillPayment(req: AuthenticatedRequest, res: Response)
       };
       transactions.unshift(transaction);
 
-      // Unlock story for requesting user or matched email
-      if (req.user && !req.user.unlockedStoryIds.includes(story.id)) {
-        req.user.unlockedStoryIds.push(story.id);
+      // Unlock story for requesting user or matched email in active array and memory
+      if (req.user) {
+        if (!req.user.unlockedStoryIds.includes(story.id)) {
+          req.user.unlockedStoryIds.push(story.id);
+        }
+        const userInDb = users.find((u) => u.id === req.user!.id);
+        if (userInDb && !userInDb.unlockedStoryIds.includes(story.id)) {
+          userInDb.unlockedStoryIds.push(story.id);
+        }
       }
       const matchedUser = users.find((u) => u.email.toLowerCase() === resolvedEmail);
       if (matchedUser && !matchedUser.unlockedStoryIds.includes(story.id)) {
