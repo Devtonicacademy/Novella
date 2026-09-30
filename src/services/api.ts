@@ -80,18 +80,17 @@ let localSettings: PlatformSettings = { ...INITIAL_PLATFORM_SETTINGS };
 async function safeFetchJson<T = any>(
   url: string,
   options?: RequestInit
-): Promise<{ ok: boolean; status: number; data?: T; error?: string; isHtml?: boolean }> {
+): Promise<{ ok: boolean; status: number; data?: T; error?: string; isServerUnavailable?: boolean }> {
   try {
     const res = await fetch(url, options);
     const contentType = res.headers.get('content-type') || '';
     
     if (!contentType.includes('application/json')) {
-      const text = await res.text().catch(() => '');
       return {
         ok: false,
         status: res.status,
-        isHtml: text.startsWith('<!DOCTYPE') || text.startsWith('<html') || text.startsWith('The page'),
-        error: res.statusText || 'Non-JSON response',
+        isServerUnavailable: true,
+        error: `Non-JSON response (${res.status})`,
       };
     }
 
@@ -100,12 +99,14 @@ async function safeFetchJson<T = any>(
       ok: res.ok,
       status: res.status,
       data,
+      isServerUnavailable: res.status === 404 || res.status >= 500,
       error: !res.ok ? (data?.error || `HTTP ${res.status}`) : undefined,
     };
   } catch (err: any) {
     return {
       ok: false,
       status: 0,
+      isServerUnavailable: true,
       error: err.message || 'Network error',
     };
   }
@@ -163,7 +164,7 @@ export const api = {
       return result.data;
     }
 
-    if (result.error && !result.isHtml && result.status !== 404 && result.status !== 502) {
+    if (result.error && !result.isServerUnavailable && result.status !== 404 && result.status < 500) {
       throw new Error(result.error);
     }
 
@@ -190,7 +191,7 @@ export const api = {
       return result.data;
     }
 
-    if (result.error && !result.isHtml && result.status !== 404 && result.status !== 502) {
+    if (result.error && !result.isServerUnavailable && result.status !== 404 && result.status < 500) {
       throw new Error(result.error);
     }
 
@@ -255,7 +256,7 @@ export const api = {
       return result.data;
     }
 
-    if (result.error && !result.isHtml && result.status !== 404 && result.status !== 502) {
+    if (result.error && !result.isServerUnavailable && result.status !== 404 && result.status < 500) {
       throw new Error(result.error);
     }
 
