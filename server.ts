@@ -2645,4 +2645,9 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!process.env.VERCEL && !process.env.NOW_REGION) {
+  startServer();
+}
+
+export default app;
+export { app };
